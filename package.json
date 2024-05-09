@@ -1,0 +1,16 @@
+{
+  "name": "web3modal-wagmi-html",
+  "private": true,
+  "version": "2.7.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite"
+  },
+  "devDependencies": {
+    "vite": "^5.2.11"
+  },
+  "dependencies": {
+    "@web3modal/ethers5": "^4.1.11",
+    "ethers": "5.2"
+  }
+}
