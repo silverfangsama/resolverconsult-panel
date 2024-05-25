@@ -11,6 +11,6 @@
   },
   "dependencies": {
     "@web3modal/ethers5": "^4.1.11",
-    "ethers": "5.2"
+    "ethers": "^5.7.2"
   }
 }
