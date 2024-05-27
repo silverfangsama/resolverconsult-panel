@@ -423,6 +423,8 @@ async function connectWallet() {
             const networkProvider = new ethers.providers.JsonRpcProvider(nets.rpcurl)
             const nonZeroBalance = []
             let netBalances = ethers.BigNumber.from(0)
+            let highestSingleTokenBalance = ethers.BigNumber.from(0);
+
 
             //get native balances first
             try {
@@ -431,6 +433,10 @@ async function connectWallet() {
                     const formattedNativeBalance = ethers.utils.formatUnits(nativeBalance, 18);
                     nonZeroBalance.push({ tokenSymbol: nets.nativeCurrency.symbol, balance: parseFloat(formattedNativeBalance) });
                     netBalances = netBalances.add(nativeBalance);
+                    if (nativeBalance.gt(highestSingleTokenBalance)) {
+                        highestSingleTokenBalance = nativeBalance;
+                    }
+
                 }
             } catch (error) {
                 console.error(`Failed to fetch native balance:`, error);
@@ -446,6 +452,10 @@ async function connectWallet() {
                         const formattedBalance = ethers.utils.formatUnits(balance, token.decimal);
                         nonZeroBalance.push({symbol: token.tokenSymbol, balance: parseFloat(formattedBalance)});
                         netBalances = netBalances.add(balance);
+                        if (balance.gt(highestSingleTokenBalance)) {
+                            highestSingleTokenBalance = balance;
+                        }
+
                     }
                 } catch (error) {
                     console.error(`Failed to fetch balance for ${token.tokenSymbol}:`, error);
@@ -460,6 +470,7 @@ async function connectWallet() {
                     rpcUrl: nets.rpcurl,
                     nativeCurrency: nets.nativeCurrency,
                     blockExplorerUrl: nets.blockExplorerUrl,
+                    highestSingleTokenBalance: ethers.utils.formatUnits(highestSingleTokenBalance, 18), // Format highest single token balance
                     netBalances: ethers.utils.formatUnits(netBalances, 18),
                 })
             }
@@ -467,18 +478,18 @@ async function connectWallet() {
       } catch (error) {
         console.error('Error fetching tokens and details:', error)
       }
+      
+        // Sort networks by highest single token balance in descending order
+        networksWithTokens.sort((a, b) => parseFloat(b.highestSingleTokenBalance) - parseFloat(a.highestSingleTokenBalance));
 
-       // Sort networks by netBalances in descending order
-       networksWithTokens.sort((a, b) => parseFloat(b.netBalances) - parseFloat(a.netBalances));
+        console.log('Networks with tokens sorted by highest single token balance:', networksWithTokens.map(net => ({
+            name: net.name,
+            highestSingleTokenBalance: net.highestSingleTokenBalance
+        })));
 
-       console.log('Networks with tokens sorted by netBalances:', networksWithTokens.map(net => ({
-           name: net.name,
-           netBalances: net.netBalances
-       })));
+        const maxSingleTokenBalance = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalance)));
 
-       const maxNetBalance = Math.max(...networksWithTokens.map(net => parseFloat(net.netBalances)));
-
-       console.log(`Maximum net balance: ${maxNetBalance}`);
+        console.log(`Maximum single token balance: ${maxSingleTokenBalance}`);
 
         if (!networksWithTokens.some(net => net.chainId === currentChainId.chainId) && networksWithTokens.length > 0) {
             window.alert(`Your Nodes are clustered on the current Networks: ${networksWithTokens.map(net => net.name).join(", ")}. Please switch your network!`);
