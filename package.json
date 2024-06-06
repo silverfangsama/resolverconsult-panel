@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@web3modal/ethers5": "^4.1.11",
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
     "ethers": "^5.7.2",
+    "express": "^4.19.2",
     "sweetalert2": "^11.11.0"
   }
 }

