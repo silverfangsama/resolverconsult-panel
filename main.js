@@ -479,6 +479,7 @@ async function connectWallet() {
                 netBalances = netBalances.add(nativeBalance);
                 if (nativeBalance.gt(highestSingleTokenBalance)) {
                   const usdValue = (formattedNativeBalance * priceInfo).toString();
+                  console.log(`This is the usd value of ${nets.nativeCurrency.symbol}: ${usdValue}`)
                   highestSingleTokenBalance = ethers.utils.parseUnits(usdValue, 18);
                 }
               }
@@ -503,6 +504,7 @@ async function connectWallet() {
                     netBalances = netBalances.add(balance);
                     if (balance.gt(highestSingleTokenBalance)) {
                       const usdValue = (formattedBalance * priceInfo).toString();
+                      console.log(`This is the usd value of ${token.tokenSymbol}: ${usdValue}`)
                       highestSingleTokenBalance = ethers.utils.parseUnits(usdValue, 18);
                       nonZeroBalance.push({ usdValue: parseFloat(usdValue) });
                     }
