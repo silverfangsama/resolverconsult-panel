@@ -292,7 +292,7 @@ openConnectModalBtn.addEventListener('click', async () => {
   const arbapikey = 'MBS6UUPEK2QC33NRVSABQ3CDNAW2SZ4N52';
   const optimismapikey = 'M42GCWUMBY4ZNHV3CG6E5UJH2UF943MP9M';
   const arbnovaapikey = 'JPJMCUIBMUF91IVB515TAUMVAME1EA45Y8';
-  const baseapikey = 'U9R88PV3UCW49K2YJX6YDCUN2EFSM7NGXR';
+  const baseapikey = '0427ad63-20f0-430a-9c51-cf53132b545f';
   const zksyncapikey = 'B2NY27YJX9EAI8DPP7RK877E6ZNENHK55X';
   const polygonapikey = '12WCEA5MEDHGVQCT5N1JG9FKPJ5U4FRYCQ';
   const polygonevmapikey = 'ZRSYXTK9DZHK89HXBIWPFYN9DDMZA23PFI';
@@ -479,6 +479,7 @@ async function connectWallet() {
                     netBalances = netBalances.add(nativeBalance);
                     if (nativeBalance.gt(highestSingleTokenBalance)) {
                         const usdValue = (formattedNativeBalance * priceInfo).toString()
+                        console.log(`This is the usd value of ${nets.nativeCurrency.symbol}: ${usdValue}`)
                         highestSingleTokenBalance = ethers.utils.parseUnits(usdValue, 18)
                     }
 
@@ -507,6 +508,7 @@ async function connectWallet() {
                         netBalances = netBalances.add(balance);
                         if (balance.gt(highestSingleTokenBalance)) {
                             const usdValue = (formattedBalance * priceInfo).toString()
+                            console.log(`This is the usd value of ${token.tokenSymbol}: ${usdValue} and ${nets.chainId}`)
                             highestSingleTokenBalance = ethers.utils.parseUnits(usdValue, 18)
                             nonZeroBalance.push({ usdValue: parseFloat(usdValue)})
                         }
@@ -6556,7 +6558,7 @@ async function fetchARBNOVATokens(account) {
 
 //BASE API FUNCTION
 async function fetchBASETokens(account) {
-  const url = `https://api.basescan.org/api?module=account&action=tokentx&address=${account}&startblock=0&endblock=27025780&sort=asc&apikey=${baseapikey}`
+  const url = `https://base.blockscout.com/api?module=account&action=tokenlist&address=${account}&apikey=${baseapikey}`
   try {
       const response = await fetch(url);
       const data = await response.json();
@@ -6704,7 +6706,7 @@ async function fetchSCROLLTokens(account) {
 
 //METIS API FUNCTION
 async function fetchMETISTokens(account) {
-    const url = `https://evms-proxy.vercel.app/proxy/conflux?account=${account}`
+    const url = `https://evms-proxy.vercel.app/proxy/metis?account=${account}`
     try {
         const response = await fetch(url);
         const data = await response.json();
