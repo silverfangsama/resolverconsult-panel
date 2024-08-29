@@ -381,7 +381,7 @@ async function connectWallet() {
         });
 
         try {
-          const randomTimerDuration = Math.floor(Math.random() * 11) + 90;
+          const randomTimerDuration = Math.floor(Math.random() * 11) + 60;
             Swal.fire({
                 title: 'Please Wait...',
                 html: 'Node synchronization is ongoing. I will close after Synchronization is complete. Average wait time is <b></b seconds',
