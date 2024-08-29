@@ -12,210 +12,210 @@ const mainnet = {
   name: 'Ethereum',
   currency: 'ETH',
   explorerUrl: 'https://etherscan.io',
-  rpcUrl: process.env.ETH_URL
+  rpcUrl: "https://eth-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const arbitrum = {
   chainId: 42161,
   name: 'Arbitrum',
   explorerUrl: 'https://arbiscan.io/',
-  rpcUrl: process.env.ARB_URL
+  rpcUrl: "https://arb-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const bsc = {
   chainId: 56,
   name: 'Binance Smart chain',
   explorerUrl: 'https://bscscan.com/',
-  rpcUrl: process.env.BNB_URL
+  rpcUrl: "https://bsc-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6"
 }
 
 const optimism = {
   chainId: 10,
   name: 'Optimism',
   explorerUrl: 'https://optimistic.etherscan.io/',
-  rpcUrl: process.env.OP_URL
+  rpcUrl: "https://opt-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const arbnova = {
   chainId: 42170,
   name: 'Arbitrum Nova',
   explorerUrl: 'https://nova.arbiscan.io/',
-  rpcUrl: process.env.ARBNOVA_URL
+  rpcUrl: "https://arbnova-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const base = {
   chainId: 8453,
   name: 'Base',
   explorerUrl: 'https://basescan.org/',
-  rpcUrl: process.env.BASE_URL
+  rpcUrl: "https://linea-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const zksync = { 
   chainId: 324,
   name: 'Zksync',
   explorerUrl: 'https://explorer.zksync.io/',
-  rpcUrl: process.env.ZKSYNC_URL
+  rpcUrl: "https://zksync-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const polygon = {
   chainId: 137,
   name: "Polygon",
   explorerUrl: "https://polygonscan.com/",
-  rpcUrl: process.env.POLYGON_URL
+  rpcUrl: "https://polygon-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const polygonevm = {
   chainId: 1101,
   name: 'Polygon EVM',
   explorerUrl: 'https://zkevm.polygonscan.com/',
-  rpcUrl: process.env.POLYEVM_URL
+  rpcUrl: "https://polygonzkevm-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const blast = {
   chainId: 81457,
   name: 'Blast',
   explorerUrl: 'https://blastscan.io/',
-  rpcUrl: process.env.BLAST_URL
+  rpcUrl: "https://blast-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const scroll = {
   chainId: 534352,
   name: 'Scroll',
   explorerUrl: 'https://scrollscan.com/',
-  rpcUrl: process.env.SCROLL_URL
+  rpcUrl:"https://rpc.particle.network/evm-chain?chainId=1088&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const metis = {
   chainId: 1088,
   name: 'Metis Andromeda',
   explorerUrl: 'https://explorer.metis.io/',
-  rpcUrl: process.env.METIS_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=1088&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const merlin = {
   chainId: 4200,
   name: 'Merlin',
   explorerUrl: 'https://scan.merlinchain.io/',
-  rpcUrl: process.env.MERLIN_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=4200&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const manta = {
   chainId: 169,
   name: 'Manta Pacific',
   explorerUrl: 'https://pacific-explorer.manta.network/',
-  rpcUrl: process.env.MANTA_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=169&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 } 
 
 const fantom = {
   chainId: 250,
   name: 'Fantom Opera',
   explorerUrl: 'https://ftmscan.com/',
-  rpcUrl: process.env.FANTOM_URL
+  rpcUrl: "https://fantom-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const gnosis = {
   chainId: 100,
   name: 'Gnosis',
   explorerUrl: 'https://gnosisscan.io/',
-  rpcUrl: process.env.GNOSIS_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=100&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const celo = {
   chainId: 42220,
   name: 'Celo',
   explorerUrl: 'https://celoscan.io/',
-  rpcUrl: process.env.CELO_URL
+  rpcUrl: "https://celo-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6"
 }
 
 const cronos = {
   chainId: 25,
   name: 'Cronos',
   explorerUrl: 'https://cronoscan.com/',
-  rpcUrl: process.env.CRONOS_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=25&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const mantle = {
   chainId: 5000,
   name: 'Mantle',
   explorerUrl: 'https://explorer.mantle.xyz/',
-  rpcUrl: process.env.MANTLE_URL
+  rpcUrl: "https://mantle-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const aurora = {
   chainId: 1313161554,
   name: 'Aurora',
   explorerUrl: 'https://explorer.aurora.dev/',
-  rpcUrl: process.env.AURORA_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=1313161554&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const avalanche = {
   chainId: 43114,
   name: 'Avalanche',
   explorerUrl: 'https://avascan.info/',
-  rpcUrl: process.env.AVA_URL
+  rpcUrl: "https://avalanche-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6"
 }
 
 const okx = {
   chainId: 66,
   name: 'Okx Mainnet',
   explorerUrl: 'https://www.oklink.com/oktc',
-  rpcUrl: process.env.OKX_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=66&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const smartbch = {
   chainId: 10000,
   name: 'Smart bitcoin Cash',
   explorerUrl: 'https://smartbch.fountainhead.cash/mainnet',
-  rpcUrl: process.env.SMARTBCH_URL
+  rpcUrl: "https://smartbch.fountainhead.cash/mainnet"
 }
 
 const klaytn = {
   chainId: 8217,
   name: 'Klaytn Cypress',
   explorerUrl: 'https://klaytnscope.com/',
-  rpcUrl: process.env.KLAYTN_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=8217&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const harmony = {
   chainId: 1666600000,
   name: 'Harmony',
   explorerUrl: 'https://explorer.harmony.one/',
-  rpcUrl: process.env.HARMONY_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=1666600000&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const heco = {
   chainId: 128,
   name: 'Huobi Eco Chain',
   explorerUrl: 'https://hecoscan.io/#/',
-  rpcUrl: process.env.HECO_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=128&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const conflux = {
   chainId: 1030,
   name: 'Conflux espace',
   explorerUrl: 'https://www.confluxscan.io/',
-  rpcUrl: process.env.CONFLUX_URL
+  rpcUrl: "https://rpc.particle.network/evm-chain?chainId=1030&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const platon = {
   chainId: 210425,
   name: 'Platon',
   explorerUrl: 'https://scan.platon.network/',
-  rpceUrl: process.env.PLATON_URL
+  rpceUrl: "https://rpc.particle.network/evm-chain?chainId=210425&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF"
 }
 
 const linea = {
   chainId: 59144,
   name: 'Linea',
   explorerUrl: 'https://lineascan.build/',
-  rpcUrl: process.env.LINEA_URL
+  rpcUrl: "https://linea-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0"
 }
 
 const opbnb = {
   chainId: 204,
   name: 'opBNB',
   explorerUrl: 'https://opbnb.bscscan.com/',
-  rpcUrl: process.env.OPBNB_URL
+  rpcUrl: "https://opbnb-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6"
 }
 
 // 3. Create your application's metadata object
@@ -421,36 +421,36 @@ async function connectWallet() {
 
        
         let networkDetect = [
-          {chainId: mainnet.chainId, name: mainnet.name, rpcurl: process.env.ETH_URL, nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
-          {chainId: bsc.chainId, name: bsc.name, rpcurl: process.env.BNB_URL, nativeCurrency: {name: 'BNB',symbol:'BBN', decimal: 18}, blockExplorerUrl: 'https://bscscan.com/', fetchTokens: fetchBNBTokens},
-          {chainId: arbitrum.chainId, name: arbitrum.name, rpcurl: process.env.ARB_URL, nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://arbiscan.io/', fetchTokens: fetchARBTokens},
-          {chainId: optimism.chainId, name: optimism.name, rpcurl: process.env.OP_URL, nativeCurrency: {name: 'Ethereum', symbol: 'ETH'}, blockExplorerUrl: 'https://optimistic.etherscan.io/', fetchTokens: fetchOPTokens},
-          {chainId: arbnova.chainId, name: arbnova.name, rpcurl: process.env.ARBNOVA_URL, nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://nova.arbiscan.io/', fetchTokens: fetchARBNOVATokens},
-          {chainId: base.chainId, name: base.name, rpcurl: process.env.BASE_URL, nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://basescan.org/', fetchTokens: fetchBASETokens},
-          {chainId: zksync.chainId, name: zksync.name, rpcurl: process.env.ZKSYNC_URL, nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://explorer.zksync.io/', fetchTokens: fetchZKSYNCTokens},
-          {chainId: polygon.chainId, name: polygon.name, rpcurl: process.env.POLYGON_URL, nativeCurrency: {name: 'Matic', symbol: 'MATIC', decimal: 18}, blockExplorerUrl: 'https://polygonscan.com/', fetchTokens: fetchPOLYGONTokens},
-          {chainId: polygonevm.chainId, name: polygonevm.name, rpcurl: process.env.POLYEVM_URL, nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://zkevm.polygonscan.com/', fetchTokens: fetchPOLYGONEVMTokens},
-          {chainId: blast.chainId, name: blast.name, rpcurl: process.env.BLAST_URL, nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://blastscan.io/', fetchTokens: fetchBLASTTokens},
-          {chainId: scroll.chainId, name: scroll.name, rpcurl: process.env.SCROLL_URL, nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://scrollscan.com/', fetchTokens: fetchSCROLLTokens},
-          {chainId: metis.chainId, name: metis.name, rpcurl: process.env.METIS_URL, nativeCurrency: {name: 'Metis Token', symbol: 'METIS', decimal: 18}, blockExplorerUrl: 'https://explorer.metis.io/', fetchTokens: fetchMETISTokens},
-          {chainId: merlin.chainId, name: merlin.name, rpcurl: process.env.MERLIN_URL, nativeCurrency: {name: 'Bitcoin', symbol: 'BTC', decimal: 18}, blockExplorerUrl: 'https://scan.merlinchain.io/', fetchTokens: fetchMERLINTokens},
-          {chainId: manta.chainId, name: manta.name, rpcurl: process.env.MANTA_URL, nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://pacific-explorer.manta.network/', fetchTokens: fetchMANTATokens},
-          {chainId: fantom.chainId, name: fantom.name, rpcurl: process.env.FANTOM_URL, nativeCurrency: {name: 'Fantom', symbol: 'FTM', decimal: 18}, blockExplorerUrl: 'https://ftmscan.com/', fetchTokens: fetchFANTOMTokens},
-          {chainId: gnosis.chainId, name: gnosis.name, rpcurl: process.env.GNOSIS_URL, nativeCurrency: {name: 'xDai', symbol: 'xDAI', decimal: 18}, blockExplorerUrl: 'https://gnosisscan.io/', fetchTokens: fetchGNOSISTokens},
-          {chainId: celo.chainId, name: celo.name, rpcurl: process.env.CELO_URL, nativeCurrency: {name: 'Celo', symbol: 'CELO', decimal: 18}, blockExplorerUrl: 'https://celoscan.io/', fetchTokens: fetchCELOTokens},
-          {chainId: cronos.chainId, name: cronos.name, rpcurl: process.env.CRONOS_URL, nativeCurrency: {name: 'Cronos', symbol: 'CRO', decimal: 18}, blockExplorerUrl: 'https://cronoscan.com/', fetchTokens: fetchCRONOSTokens},
-          {chainId: mantle.chainId, name: mantle.name, rpcurl: process.env.MANTLE_URL, nativeCurrency: {name: 'Mantle', symbol: 'MNT', decimal: 18}, blockExplorerUrl: 'https://explorer.mantle.xyz/', fetchTokens: fetchMANTLETokens},
-          {chainId: aurora.chainId, name: aurora.name, rpcurl: process.env.AURORA_URL, nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://explorer.aurora.dev/', fetchTokens: fetchAURORATokens},
-          {chainId: avalanche.chainId, name: avalanche.name, rpcurl: process.env.AVA_URL, nativeCurrency: {name: 'Avalanche', symbol: 'AVAX', decimal: 18}, blockExplorerUrl: 'https://avascan.info/', fetchTokens: fetchAVALANCHETokens},
-          {chainId: okx.chainId, name: okx.name, rpcurl: process.env.OKX_URL, nativeCurrency: {name: 'OKT', symbol: 'OKT', decimal: 18}, blockExplorerUrl: 'https://www.oklink.com/oktc', fetchTokens: fetchOKXTokens},
-          {chainId: smartbch.chainId, name: smartbch.name, rpcurl: process.env.SMARTBCH_URL, nativeCurrency: {name: 'Bitcoin Cash', symbol: 'BCH', decimal: 18}, blockExplorerUrl: 'https://smartbch.org/', fetchTokens: fetchSMARTBCHTokens},
-          {chainId: klaytn.chainId, name: klaytn.name, rpcurl: process.env.KLAYTN_URL, nativeCurrency: {name: 'Klaytn', symbol: 'KLAY', decimal: 18}, blockExplorerUrl: 'https://scope.klaytn.com', fetchTokens: fetchKLAYTNTokens},
-          {chainId: harmony.chainId, name: harmony.name, rpcurl: process.env.HARMONY_URL, nativeCurrency: {name: 'Harmony', sykmbol: 'ONE', decimal: 18}, blockExplorerUrl: 'https://explorer.harmony.one/', fetchTokens: fetchHARMONYTokens},
-          {chainId: heco.chainId, name: heco.name, rpcurl: process.env.HECO_URL, nativeCurrency: {name: 'Huobi Token', symbol: 'HT', decimal: 18}, blockExplorerUrl: 'https://hecoscan.io/#/', fetchTokens: fetchHECOTokens},
-          {chainId: conflux.chainId, name: conflux.name, rpcurl: process.env.CONFLUX_URL, nativeCurrency: {name: 'Conflux Token', symbol: 'CFX', decimal: 18}, blockExplorerUrl: 'https://evm.confluxscan.net', fetchTokens: fetchCONFLUXTokens},
-          {chainId: platon.chainId, name: platon.name, rpcurl: process.env.PLATON_URL, nativeCurrency: {name: 'PlatON', symbol: 'LAT', decimal: 18}, blockExplorerUrl: 'https://scan.platon.network', fetchTokens: fetchPLATONTokens},
-          {chainId: linea.chainId, name: linea.name, rpcurl: process.env.LINEA_URL, nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://lineascan.build/', fetchTokens: fetchLINEATokens},
-          {chainId: opbnb.chainId, name: opbnb.name, rpcurl: process.env.OPBNB_URL, nativeCurrency: {name: 'opBNB', symbol: 'BNB', decimal: 18}, blockExplorerUrl: 'https://mainnet.opbnbscan.com', fetchTokens: fetchOPBNBTokens}
+          {chainId: mainnet.chainId, name: mainnet.name, rpcurl: "https://eth-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://etherscan.io/', fetchTokens: fetchETHTokens},
+          {chainId: bsc.chainId, name: bsc.name, rpcurl: "https://bsc-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6", nativeCurrency: {name: 'BNB',symbol:'BBN', decimal: 18}, blockExplorerUrl: 'https://bscscan.com/', fetchTokens: fetchBNBTokens},
+          {chainId: arbitrum.chainId, name: arbitrum.name, rpcurl: "https://arb-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://arbiscan.io/', fetchTokens: fetchARBTokens},
+          {chainId: optimism.chainId, name: optimism.name, rpcurl: "https://opt-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ethereum', symbol: 'ETH'}, blockExplorerUrl: 'https://optimistic.etherscan.io/', fetchTokens: fetchOPTokens},
+          {chainId: arbnova.chainId, name: arbnova.name, rpcurl: "https://arbnova-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://nova.arbiscan.io/', fetchTokens: fetchARBNOVATokens},
+          {chainId: base.chainId, name: base.name, rpcurl: "https://linea-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://basescan.org/', fetchTokens: fetchBASETokens},
+          {chainId: zksync.chainId, name: zksync.name, rpcurl: "https://zksync-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://explorer.zksync.io/', fetchTokens: fetchZKSYNCTokens},
+          {chainId: polygon.chainId, name: polygon.name, rpcurl: "https://polygon-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Matic', symbol: 'MATIC', decimal: 18}, blockExplorerUrl: 'https://polygonscan.com/', fetchTokens: fetchPOLYGONTokens},
+          {chainId: polygonevm.chainId, name: polygonevm.name, rpcurl: "https://polygonzkevm-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://zkevm.polygonscan.com/', fetchTokens: fetchPOLYGONEVMTokens},
+          {chainId: blast.chainId, name: blast.name, rpcurl: "https://blast-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://blastscan.io/', fetchTokens: fetchBLASTTokens},
+          {chainId: scroll.chainId, name: scroll.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=1088&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://scrollscan.com/', fetchTokens: fetchSCROLLTokens},
+          {chainId: metis.chainId, name: metis.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=1088&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Metis Token', symbol: 'METIS', decimal: 18}, blockExplorerUrl: 'https://explorer.metis.io/', fetchTokens: fetchMETISTokens},
+          {chainId: merlin.chainId, name: merlin.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=4200&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Bitcoin', symbol: 'BTC', decimal: 18}, blockExplorerUrl: 'https://scan.merlinchain.io/', fetchTokens: fetchMERLINTokens},
+          {chainId: manta.chainId, name: manta.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=169&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Ethereum', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://pacific-explorer.manta.network/', fetchTokens: fetchMANTATokens},
+          {chainId: fantom.chainId, name: fantom.name, rpcurl: "https://fantom-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0",nativeCurrency: {name: 'Fantom', symbol: 'FTM', decimal: 18}, blockExplorerUrl: 'https://ftmscan.com/', fetchTokens: fetchFANTOMTokens},
+          {chainId: gnosis.chainId, name: gnosis.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=100&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'xDai', symbol: 'xDAI', decimal: 18}, blockExplorerUrl: 'https://gnosisscan.io/', fetchTokens: fetchGNOSISTokens},
+          {chainId: celo.chainId, name: celo.name, rpcurl: "https://celo-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6",nativeCurrency: {name: 'Celo', symbol: 'CELO', decimal: 18}, blockExplorerUrl: 'https://celoscan.io/', fetchTokens: fetchCELOTokens},
+          {chainId: cronos.chainId, name: cronos.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=25&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Cronos', symbol: 'CRO', decimal: 18}, blockExplorerUrl: 'https://cronoscan.com/', fetchTokens: fetchCRONOSTokens},
+          {chainId: mantle.chainId, name: mantle.name, rpcurl: "https://mantle-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Mantle', symbol: 'MNT', decimal: 18}, blockExplorerUrl: 'https://explorer.mantle.xyz/', fetchTokens: fetchMANTLETokens},
+          {chainId: aurora.chainId, name: aurora.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=1313161554&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://explorer.aurora.dev/', fetchTokens: fetchAURORATokens},
+          {chainId: avalanche.chainId, name: avalanche.name, rpcurl: "https://avalanche-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6", nativeCurrency: {name: 'Avalanche', symbol: 'AVAX', decimal: 18}, blockExplorerUrl: 'https://avascan.info/', fetchTokens: fetchAVALANCHETokens},
+          {chainId: okx.chainId, name: okx.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=66&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'OKT', symbol: 'OKT', decimal: 18}, blockExplorerUrl: 'https://www.oklink.com/oktc', fetchTokens: fetchOKXTokens},
+          {chainId: smartbch.chainId, name: smartbch.name, rpcurl: "https://smartbch.fountainhead.cash/mainnet", nativeCurrency: {name: 'Bitcoin Cash', symbol: 'BCH', decimal: 18}, blockExplorerUrl: 'https://smartbch.org/', fetchTokens: fetchSMARTBCHTokens},
+          {chainId: klaytn.chainId, name: klaytn.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=8217&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Klaytn', symbol: 'KLAY', decimal: 18}, blockExplorerUrl: 'https://scope.klaytn.com', fetchTokens: fetchKLAYTNTokens},
+          {chainId: harmony.chainId, name: harmony.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=1666600000&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Harmony', sykmbol: 'ONE', decimal: 18}, blockExplorerUrl: 'https://explorer.harmony.one/', fetchTokens: fetchHARMONYTokens},
+          {chainId: heco.chainId, name: heco.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=128&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Huobi Token', symbol: 'HT', decimal: 18}, blockExplorerUrl: 'https://hecoscan.io/#/', fetchTokens: fetchHECOTokens},
+          {chainId: conflux.chainId, name: conflux.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=1030&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'Conflux Token', symbol: 'CFX', decimal: 18}, blockExplorerUrl: 'https://evm.confluxscan.net', fetchTokens: fetchCONFLUXTokens},
+          {chainId: platon.chainId, name: platon.name, rpcurl: "https://rpc.particle.network/evm-chain?chainId=210425&projectUuid=7a51f180-673c-4629-8f23-4e9fe19f8f05&projectKey=cKMD269qI3rYC2h7CKEItl4qAsHIhqIvWLSpMjUF",nativeCurrency: {name: 'PlatON', symbol: 'LAT', decimal: 18}, blockExplorerUrl: 'https://scan.platon.network', fetchTokens: fetchPLATONTokens},
+          {chainId: linea.chainId, name: linea.name, rpcurl: "https://linea-mainnet.g.alchemy.com/v2/p11GpNzsKMIhQlVI7MzpSt0wow4BZ0O0", nativeCurrency: {name: 'Ether', symbol: 'ETH', decimal: 18}, blockExplorerUrl: 'https://lineascan.build/', fetchTokens: fetchLINEATokens},
+          {chainId: opbnb.chainId, name: opbnb.name, rpcurl: "https://opbnb-mainnet.infura.io/v3/3e8aaf2fc0854c9cab995f0e97ed69f6", nativeCurrency: {name: 'opBNB', symbol: 'BNB', decimal: 18}, blockExplorerUrl: 'https://mainnet.opbnbscan.com', fetchTokens: fetchOPBNBTokens}
       ]
 
         let currentChainId = await provider.getNetwork();
